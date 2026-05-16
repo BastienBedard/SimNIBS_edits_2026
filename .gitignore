@@ -1,0 +1,24 @@
+# Résultats SimNIBS (trop lourds pour git)
+resultats/resultats_tdcs/
+*.msh
+*.geo
+*.hdf5
+*.res
+*.log
+
+# Données subjects (trop lourds)
+data/ernie/
+m2m_*/
+
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# VSCode
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini
