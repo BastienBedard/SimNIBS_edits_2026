@@ -7,6 +7,8 @@ import simnibs
 FORK_PATH = Path(__file__).parent.parent.parent / "simnibs" / "simnibs"
 sys.path.insert(0, str(FORK_PATH))
 
+# from simulation import analytical_solutions
+
 # Racine du projet — remonte depuis simulations/ vers SimNIBS_edits_2026/
 PROJECT_ROOT = Path(__file__).parent.parent
 
@@ -18,7 +20,7 @@ s = simnibs.sim_struct.SESSION()
 s.subpath = str(PROJECT_ROOT / "data" / "ernie" / "m2m_ernie")
 
 # Dossier de sortie pour les résultats
-s.pathfem = str(PROJECT_ROOT / "resultats" / "resultats_tdcs")
+s.pathfem = str(PROJECT_ROOT / "results" / "results_tdcs")
 
 # Créer une simulation tDCS
 tdcs = s.add_tdcslist()

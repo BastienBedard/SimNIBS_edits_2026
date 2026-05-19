@@ -1,14 +1,14 @@
 # Résultats SimNIBS (trop lourds pour git)
-resultats/resultats_tdcs/
-*.msh
-*.geo
-*.hdf5
-*.res
-*.log
+results/results_tdcs/
+
 
 # Données subjects (trop lourds)
-data/ernie/
-m2m_*/
+data/ernie/m2m_*/
+data/ernie/*.ini
+
+# paramètre perso
+data/ernie/simulations_param
+
 
 # Environnement Python
 .venv/
