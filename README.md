@@ -1,7 +1,7 @@
 # SimNIBS Error Modelling 
 **Bastien Bedard**
 
-This repository contains scripts and tools for modelling simulation errors in transcranial Direct Current Stimulation (tDCS) using a selectively modified version of [SimNIBS](https://simnibs.github.io/simnibs/).
+This repository contains scripts and tools for modelling simulation in transcranial Direct Current Stimulation (tDCS) and repetitive Transcranial Magnetic Stimulation (rTMS) using a selectively modified version of [SimNIBS](https://simnibs.github.io/simnibs/).
 
 ---
 
@@ -9,9 +9,10 @@ This repository contains scripts and tools for modelling simulation errors in tr
 
 ```
 SimNIBS_edits_2026/
-├── simulations/                # Python scripts for tDCS simulations
+├── simulations/                # Python scripts for tDCS and rTMS simulations
 ├── data/ernie/                 # Subject mesh data (e.g. m2m_ernie)
-├── resultats/resultats_tdcs/   # Simulation outputs (local only, not tracked by git)
+├── results/                    # Simulation outputs (local only, not tracked by git)
+├── utils/                      # Complementary files for simulation
 ├── .gitignore
 └── README.md
 ```
