@@ -1,0 +1,625 @@
+{
+  "eichhammer2003": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 90,
+      "protocol_type": "rTMS",
+      "frequency_hz": 20,
+      "n_pulses_per_session": 1000,
+      "n_sessions": 4
+    }
+  },
+  "addicott2024": {
+    
+    "classification": {
+      "target_region": "PFC",
+      "hemisphere": "medial",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "AFz",
+      "coil_direction": "Nz",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagVenture_MCF-B65_new.ccd",
+      "note": "SN non précisé dans l'article. Version _new assumée (SN:2434). Version _old (SN:227) possible."
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 110,
+      "protocol_type": "iTBS",
+      "frequency_hz": null,
+      "n_pulses_per_session": 600,
+      "n_sessions": 28
+    }
+  },
+  "bidzinski2022": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "bilateral",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20_L": "F5",
+      "coil_direction_L": "Cz",
+      "coil_position_10_20_R": "F6",
+      "coil_direction_R": "Cz",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagVenture_MCF-B65_new.ccd",
+      "note": "SN non précisé dans l'article. Version _new assumée (SN:2434). Version _old (SN:227) possible.",
+      "bilateral_method": "two_coils"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 90,
+      "protocol_type": "rTMS",
+      "frequency_hz": 20,
+      "n_pulses_per_session": 750,
+      "n_sessions": 20
+    }
+  },
+  "prikryl2014": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 110,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 2000,
+      "n_sessions": 21
+    }
+  },
+  "huang2016": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 110,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 2000,
+      "n_sessions": 21
+    }
+  },
+  "abdelrahman2021": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 80,
+      "protocol_type": "rTMS",
+      "frequency_hz": 20,
+      "n_pulses_per_session": 2000,
+      "n_sessions": 10
+    }
+  },
+  "li2020": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 100,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 3000,
+      "n_sessions": 10
+    }
+  },
+  "li2022": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 100,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 3000,
+      "n_sessions": 5
+    }
+  },
+  "mousa2025": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagStim_D70.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 80,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 2000,
+      "n_sessions": 15
+    }
+  },
+  "du2024": {
+    
+    "classification": {
+      "target_region": "DMPFC",
+      "hemisphere": "medial",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "AFz",
+      "coil_direction": "Nz",
+      "note": "orientation conventionnelle — non précisée dans l'article",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagStim_D70.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": "NR",
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 1200,
+      "n_sessions": 20
+    }
+  },
+  "amiaz2009": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle — non précisée dans l'article",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagStim_D70.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 100,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 1000,
+      "n_sessions": 10
+    }
+  },
+  "moeller2022": {
+    
+    "classification": {
+        "target_region": "DLPFC",
+        "hemisphere": "bilateral",
+        "frequency_band": "high"
+    },
+    "simulation": {
+        "coil_position_10_20": "Cz",
+        "coil_direction": "Nz",
+        "coil_folder": "flexible_coils",
+        "coil_file": "Brainsway_H4.tcd",
+        "note": "H4 helmet — position centrale Cz a revoir",
+        "bilateral_method": "single_coil"
+    },
+    "dosimetry": {
+      "intensity_pct_rMT": 120,
+      "note": "Titration 100-110-120% rMT. Valeur maximale retenue pour la simulation.",
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 1800,
+      "n_sessions": 15
+    }
+  },
+  "bellini2024": {
+    
+    "classification": {
+        "target_region": "DLPFC",
+        "hemisphere": "bilateral",
+        "frequency_band": "high"
+    },
+    "simulation": {
+        "coil_position_10_20": "Cz",
+        "coil_direction": "Nz",
+        "coil_folder": "flexible_coils",
+        "coil_file": "Brainsway_H4.tcd",
+        "note": "H4 helmet — position centrale Cz a revoir",
+        "bilateral_method": "single_coil"
+    },
+    "dosimetry": {
+      "intensity_pct_rMT": 120,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 1800,
+      "n_sessions": 18
+    }
+  },
+  "dinurklein2014_low": {
+    
+    "classification": {
+        "target_region": "DLPFC",
+        "hemisphere": "bilateral",
+        "frequency_band": "low"
+    },
+    "simulation": {
+        "coil_position_10_20": "Cz",
+        "coil_direction": "Nz",
+        "coil_folder": "flexible_coils",
+        "coil_file": "Brainsway_H4.tcd",
+        "note": "H4 helmet — position centrale Cz a revoir",
+        "bilateral_method": "single_coil"
+    },
+    "dosimetry": {
+      "intensity_pct_rMT": 120,
+      "protocol_type": "rTMS",
+      "frequency_hz": 1,
+      "n_pulses_per_session": 600,
+      "n_sessions": 13
+    }
+  },
+  "dinurklein2014_high": {
+    
+    "classification": {
+        "target_region": "DLPFC",
+        "hemisphere": "bilateral",
+        "frequency_band": "high"
+    },
+    "simulation": {
+        "coil_position_10_20": "Cz",
+        "coil_direction": "Nz",
+        "coil_folder": "flexible_coils",
+        "coil_file": "Brainsway_H4.tcd",
+        "note": "H4 helmet — position centrale Cz a revoir",
+        "bilateral_method": "single_coil"
+    },
+    "dosimetry": {
+      "intensity_pct_rMT": 120,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 990,
+      "n_sessions": 13
+    }
+  },
+  "zangen2021": {
+    
+    "classification": {
+        "target_region": "DLPFC",
+        "hemisphere": "bilateral",
+        "frequency_band": "high"
+    },
+    "simulation": {
+        "coil_position_10_20": "Cz",
+        "coil_direction": "Nz",
+        "coil_folder": "flexible_coils",
+        "coil_file": "Brainsway_H4.tcd",
+        "note": "H4 helmet — position centrale Cz a revoir",
+        "bilateral_method": "single_coil"
+    },
+    "dosimetry": {
+      "intensity_pct_rMT": 120,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 1800,
+      "n_sessions": 15
+    }
+  },
+  "mikellides2022": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagVenture_MCF-B65_new.ccd",
+      "note": "SN non précisé dans l'article. Version _new assumée (SN:2434). Version _old (SN:227) possible."
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 100,
+      "protocol_type": "iTBS",
+      "frequency_hz": null,
+      "n_pulses_per_session": 600,
+      "n_sessions": 20
+    }
+  },
+  "ibrahim2023": {
+    
+    "classification": {
+        "target_region": "DLPFC",
+        "hemisphere": "bilateral",
+        "frequency_band": "high"
+    },
+    "simulation": {
+        "coil_position_10_20": "Cz",
+        "coil_direction": "Nz",
+        "coil_folder": "flexible_coils",
+        "coil_file": "NR",
+        "note": "H11 helmet —  excluded from SimNIBS a revoir",
+        "bilateral_method": "single_coil"
+    },
+    "dosimetry": {
+      "intensity_pct_rMT": 120,
+      "note": "Titration 100-110-120% rMT. Valeur maximale retenue pour la simulation.",
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 1200,
+      "n_sessions": 20
+    }
+  },
+  "trojak2015": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "right",
+      "frequency_band": "low"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F4",
+      "coil_direction": "Cz",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagVenture_MCF-B65.ccd",
+      "note": "SN non précisé dans l'article. Mais 2015 probablement antérieur a la nouvelle version"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 120,
+      "protocol_type": "rTMS",
+      "frequency_hz": 1,
+      "n_pulses_per_session": 360,
+      "n_sessions": 10
+    }
+  },
+  "lechner2022": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 100,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 2000,
+      "n_sessions": 10
+    }
+  },
+  "sheffer2018": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 110,
+      "protocol_type": "rTMS",
+      "frequency_hz": 20,
+      "n_pulses_per_session": 900,
+      "n_sessions": 8
+    }
+  },
+  "sheffer2013": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "coil_folder": "legacy_and_other",
+      "coil_file": "Magstim_70mm_Fig8.ccd",
+      "note": "Modèle non précisé dans l'article. Mais on suppose le même modèle que l'article de 2018"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 110,
+      "protocol_type": "rTMS",
+      "frequency_hz": 20,
+      "n_pulses_per_session": 900,
+      "n_sessions": 3
+    }
+  },
+  "dieler2014": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "right",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F4",
+      "coil_direction": "Cz",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagVenture_MC-B70.ccd"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 80,
+      "protocol_type": "iTBS",
+      "frequency_hz": null,
+      "n_pulses_per_session": 600,
+      "n_sessions": 4
+    }
+  },
+  "kamp2018": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "NR",
+      "coil_file": "NR"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 110,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 1000,
+      "n_sessions": 15
+    }
+  },
+  "nawara2021": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "left",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20": "F3",
+      "coil_direction": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "NR",
+      "coil_file": "NR"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 100,
+      "protocol_type": "rTMS",
+      "frequency_hz": 10,
+      "n_pulses_per_session": 1000,
+      "n_sessions": 6
+    }
+  },
+  "wing2012": {
+    
+    "classification": {
+      "target_region": "DLPFC",
+      "hemisphere": "bilateral",
+      "frequency_band": "high"
+    },
+
+    "simulation": {
+      "coil_position_10_20_L": "F5",
+      "coil_direction_L": "Cz",
+      "coil_position_10_20_R": "F6",
+      "coil_direction_R": "Cz",
+      "note": "orientation conventionnelle 45° — non précisée dans l'article",
+      "coil_folder": "NR",
+      "coil_file": "NR",
+      "bilateral_method": "two_coils"
+    },
+
+    "dosimetry": {
+      "intensity_pct_rMT": 90,
+      "protocol_type": "rTMS",
+      "frequency_hz": 20,
+      "n_pulses_per_session": 750,
+      "n_sessions": 20
+    }
+  }
+}
