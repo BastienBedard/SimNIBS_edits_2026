@@ -5,12 +5,12 @@ from pathlib import Path
 
 # ─── 1. CHARGEMENT DU FICHIER .msh du cerveau d'ernie ───────────────────────────────────────────
 
-msh_path = Path(__file__).parent.parent / "data" / "ernie" / "m2m_erniebig" / "erniebig.msh"
+# msh_path = Path(__file__).parent.parent / "data" / "ernie" / "m2m_ernie" / "ernie.msh"
 # msh = mesh_io.read_msh(msh_path)
 
 # ─── 1.2 CHARGEMENT DU FICHIER .msh des résultats après simulation───────────────────────────────────────────
 
-msh_path_res = Path(__file__).parent.parent / "results" / "results_tdcs" /  "ernie_TDCS_1_scalar.msh"
+msh_path_res = Path(__file__).parent.parent / "results" / "results_tms_MA" / "addicott2024" / "ernie_TMS_1-0001_MagVenture_MCF-B65_new_scalar.msh"
 msh = mesh_io.read_msh(msh_path_res)
 
 # ─── 2. STRUCTURE GÉNÉRALE ───────────────────────────────────────────────────
@@ -58,7 +58,7 @@ for tag in unique_tags:
     mask  = msh.elm.tag1 == tag
     count = np.sum(mask)
     name  = TAG_NAMES.get(tag, "inconnu")
-    print(f"  Tag {tag:>5}  ({name:<25}) : {count:>8} éléments")
+    print(f"  Tag {tag:>5}  {name:<21} : {count:>8} éléments")
 
 # ─── 4. CHAMPS DISPONIBLES (DONNÉES SCALAIRES / VECTORIELLES) ────────────────
 

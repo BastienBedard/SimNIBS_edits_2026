@@ -62,9 +62,9 @@ def run_tms_simulation(study_id, protocole):
 
         pos = tms.add_position()
         pos.centre   = eeg_position                  # label EEG → SimNIBS trouve les coordonnées
-        pos.pos_ydir = coil_direction                # orientation standard si non précisé dans l'article
         pos.distance  = 4                            # distance bobine-scalp en mm (standard)
-
+        pos.pos_ydir = coil_direction
+        
         # ── Lancement ─────────────────────────────────────────────────────────
         try:
             run_simnibs(S)
