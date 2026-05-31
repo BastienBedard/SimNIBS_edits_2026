@@ -1,91 +1,41 @@
-from pathlib import Path
 import nibabel as nib
 import numpy as np
+from pathlib import Path
+from simnibs import mesh_io
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
-# ─── 1. CHARGEMENT DE L'ATLAS ────────────────────────────────────────────────
-
+# ── Atlas ─────────────────────────────────────────────────────────────────────
 atlas_path = Path(__file__).parent.parent / "utils" / "atlas.nii"
 
-img = nib.load(atlas_path)
+atlas = nib.load(atlas_path)
 
-data = img.get_fdata()          # matrice NumPy
-affine = img.affine             # matrice de transformation voxel → mm
-header = img.header             # métadonnées
+print("Atlas shape   :", atlas.shape)
+print("Atlas zooms   :", atlas.header.get_zooms())
+print("Atlas affine  :\n", atlas.affine)
 
-# ─── 2. INFORMATIONS GÉNÉRALES ───────────────────────────────────────────────
+# coins du volume atlas en mm
+corners_vox = np.array([
+    [0, 0, 0],
+    [atlas.shape[0], 0, 0],
+    [0, atlas.shape[1], 0],
+    [0, 0, atlas.shape[2]],
+    [atlas.shape[0], atlas.shape[1], atlas.shape[2]]
+])
+corners_mm = nib.affines.apply_affine(atlas.affine, corners_vox)
+print("\nAtlas extent in mm :")
+print(f"  X : [{corners_mm[:,0].min():.1f}, {corners_mm[:,0].max():.1f}]")
+print(f"  Y : [{corners_mm[:,1].min():.1f}, {corners_mm[:,1].max():.1f}]")
+print(f"  Z : [{corners_mm[:,2].min():.1f}, {corners_mm[:,2].max():.1f}]")
 
-print("=" * 50)
-print("INFOS GÉNÉRALES")
-print("=" * 50)
-print(f"Shape       : {data.shape}")
-print(f"Dtype       : {data.dtype}")
-print(f"Min valeur  : {data.min()}")
-print(f"Max valeur  : {data.max()}")
-regions = np.unique(data).astype(int)
-print(f"\nNombre de régions uniques : {len(regions)}")
-# print(f"Labels des régions        : {regions}")
+# ── Mesh ──────────────────────────────────────────────────────────────────────
+msh = mesh_io.read_msh(Path("data/ernie/m2m_ernie/ernie.msh"))
+coords = msh.nodes.node_coord
+print("\nMesh extent in mm :")
+print(f"  X : [{coords[:,0].min():.1f}, {coords[:,0].max():.1f}]")
+print(f"  Y : [{coords[:,1].min():.1f}, {coords[:,1].max():.1f}]")
+print(f"  Z : [{coords[:,2].min():.1f}, {coords[:,2].max():.1f}]")
 
-
-# for field in header.keys():
-#     try:
-#         val = header[field]
-#         # Décoder les champs bytes en string lisible
-#         if isinstance(val, bytes):
-#             val = val.decode("utf-8", errors="ignore").strip("\x00").strip()
-#         elif hasattr(val, "tobytes"):
-#             decoded = val.tobytes().decode("utf-8", errors="ignore").strip("\x00").strip()
-#             val = f"{val}  →  '{decoded}'" if decoded else val
-#         print(f"  {field:<20} : {val}")
-#     except Exception as e:
-#         print(f"  {field:<20} : [erreur: {e}]")
-
-print("=" * 50)
-
-# ─── 3. AFFICHAGE DES TRANCHES ───────────────────────────────────────────────
-# L'atlas est en 3D (x, y, z) → on prend la tranche du milieu de chaque axe.
-
-vol = data
-
-slice_x = vol[vol.shape[0] // 2, :, :]
-slice_y = vol[:, vol.shape[1] // 2, :]
-slice_z = vol[:, :, vol.shape[2] // 2]
-
-vmin, vmax = regions.min(), regions.max()
-n_regions  = len(regions)
-
-# ── Correction : matplotlib.colormaps à la place de plt.cm.get_cmap ──────────
-cmap = plt.colormaps["nipy_spectral"].resampled(n_regions)
-
-slices = [slice_x, slice_y, slice_z]
-titles = ["Sagittale (X)", "Coronale (Y)", "Axiale (Z)"]
-
-# ── Correction colorbar : axes séparés avec gridspec ─────────────────────────
-fig = plt.figure(figsize=(17, 5))
-fig.suptitle("Atlas cérébral — Tranches centrales", fontsize=14, fontweight="bold")
-
-gs = fig.add_gridspec(1, 4, width_ratios=[1, 1, 1, 0.05], wspace=0.3)
-
-axes_img = [fig.add_subplot(gs[0, i]) for i in range(3)]
-ax_cbar  = fig.add_subplot(gs[0, 3])
-
-for ax, slc, title in zip(axes_img, slices, titles):
-    im = ax.imshow(
-        slc.T,
-        origin="lower",
-        cmap=cmap,
-        vmin=vmin,
-        vmax=vmax,
-        interpolation="nearest"
-    )
-    ax.set_title(title)
-    ax.axis("off")
-
-# Colorbar dans sa propre colonne, sans chevauchement
-fig.colorbar(im, cax=ax_cbar, label="Label de région")
-
-plt.show()
 
 # ─── 5. (OPTIONNEL) EXPLORER UNE TRANCHE SPÉCIFIQUE ─────────────────────────
 
@@ -116,4 +66,5 @@ def afficher_tranche(volume, axe="z", index=None):
     plt.show()
 
 # Exemple d'utilisation :
-# afficher_tranche(vol, axe="x", index=150)
+data = atlas.get_fdata()
+afficher_tranche(data, axe="z", index=108)
