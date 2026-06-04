@@ -7,30 +7,21 @@ import json
 
 PROJECT_ROOT  = Path(__file__).parent.parent
 study_id      = "addicott2024"
-n             = 20
+n             = 10
 percentile    = 95
-metric = "mean"
+metric = "focality"
 show_no_atlas = False
 
-ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels.json"
+ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_AAL3.json"
 with open(ATLAS_LABELS_PATH, "r") as f:
     ATLAS_LABELS = {int(k): v for k, v in json.load(f).items()}
 
 # ── Chargement des données ────────────────────────────────────────────────────
-data          = np.load(PROJECT_ROOT / "results" / "results_tms_MA" / study_id / "viz_data.npz")
+data          = np.load(PROJECT_ROOT / "results" / "results_tms_MA" / study_id / "viz_data_AAL3.npz")
 nodes         = data["nodes"]
 elm_nodes     = data["elm_nodes"]
 magnE         = data["magnE"]
 region_labels = data["region_labels"]
-
-# ── Construction des deux grilles indépendantes ───────────────────────────────
-n_elms     = elm_nodes.shape[0]
-cells      = np.hstack([np.full((n_elms, 1), 4, dtype=int), elm_nodes]).ravel()
-cell_types = np.full(n_elms, 10)
-
-grid_atlas = pv.UnstructuredGrid(cells, cell_types, nodes)
-grid_E     = pv.UnstructuredGrid(cells, cell_types, nodes)
-grid_E["magnE"] = magnE
 
 # ── Top N régions par focalité (P95/mean) ────────────────────────────────────
 unique_labels = np.unique(region_labels[region_labels > 0])
@@ -44,13 +35,25 @@ mean_by_region = {
                       weights=np.ones(np.sum(region_labels == label)))
     for label in unique_labels
 }
-focality_by_region = {
-    label: p95_by_region[label] / mean_by_region[label]
-    for label in unique_labels
-    if mean_by_region[label] > 0
-}
 
-top_labels = sorted(focality_by_region, key=focality_by_region.get, reverse=True)[:n]
+metrics = {"percentile"  : p95_by_region,
+            "mean" : mean_by_region,
+            "focality" : {
+                    label: p95_by_region[label] / mean_by_region[label]
+                    for label in unique_labels
+                    if mean_by_region[label] > 0
+                }}
+
+top_labels = sorted(metrics[metric], key=metrics[metric].get, reverse=True)[:n]
+
+# ── Construction des deux grilles indépendantes ───────────────────────────────
+n_elms     = elm_nodes.shape[0]
+cells      = np.hstack([np.full((n_elms, 1), 4, dtype=int), elm_nodes]).ravel()
+cell_types = np.full(n_elms, 10)
+
+grid_atlas = pv.UnstructuredGrid(cells, cell_types, nodes)
+grid_E     = pv.UnstructuredGrid(cells, cell_types, nodes)
+grid_E["magnE"] = magnE
 
 region_display = np.full(len(region_labels), 0.0)
 region_display[region_labels == 0] = -1.0

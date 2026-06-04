@@ -9,23 +9,9 @@ from simnibs import mni2subject_coords, subject2mni_coords
 
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA"
-ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas.nii"
+ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas_AAL3.nii"
 SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie" 
-ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels.json"
-
-def _update_slice(plotter, mesh, axis, value, row, col):
-    """
-    Callback pour les sliders — coupe le mesh selon l'axe et la valeur donnés.
-    """
-    plotter.subplot(row, col)
-    plotter.clear_actors()
-
-    normal = {"x": (1, 0, 0), "y": (0, 1, 0), "z": (0, 0, 1)}[axis]
-    origin = {"x": (value, 0, 0), "y": (0, value, 0), "z": (0, 0, value)}[axis]
-
-    clipped = mesh.clip(normal=normal, origin=origin)
-    plotter.add_mesh(clipped)
-    plotter.render()
+ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_AAL3.json"
 
 class ProtocoleAnalysis:
     """
