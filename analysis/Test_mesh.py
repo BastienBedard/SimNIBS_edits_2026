@@ -2,15 +2,16 @@ import simnibs
 from simnibs import mesh_io
 import numpy as np
 from pathlib import Path
+from nibabel.affines import apply_affine
 
 # ─── 1. CHARGEMENT DU FICHIER .msh du cerveau d'ernie ───────────────────────────────────────────
 
-msh_path = Path(__file__).parent.parent / "data" / "ernie" / "m2m_erniebig" / "erniebig.msh"
+# msh_path = Path(__file__).parent.parent / "data" / "ernie" / "m2m_ernie" / "ernie.msh"
 # msh = mesh_io.read_msh(msh_path)
 
 # ─── 1.2 CHARGEMENT DU FICHIER .msh des résultats après simulation───────────────────────────────────────────
 
-msh_path_res = Path(__file__).parent.parent / "results" / "results_tdcs" /  "ernie_TDCS_1_scalar.msh"
+msh_path_res = Path(__file__).parent.parent / "results" / "results_tms_MA" / "addicott2024" / "ernie_TMS_1-0001_MagVenture_MCF-B65_new_scalar.msh"
 msh = mesh_io.read_msh(msh_path_res)
 
 # ─── 2. STRUCTURE GÉNÉRALE ───────────────────────────────────────────────────
@@ -21,19 +22,7 @@ print("=" * 55)
 print(f"Nombre de noeuds        : {msh.nodes.nr}")
 print(f"Nombre d'éléments       : {msh.elm.nr}")
 print(f"Types d'éléments uniques: {np.unique(msh.elm.elm_type)}")
-#  Type 2 = triangles (surface)
-#  Type 4 = tétraèdres (volume)
 
-# ─── 3. TAGS (RÉGIONS DU MAILLAGE) ───────────────────────────────────────────
-# Les tags identifient les différentes structures anatomiques.
-# Convention SimNIBS :
-#   1  = Matière blanche (WM)
-#   2  = Matière grise (GM)
-#   3  = LCR (CSF)
-#   4  = Boîte crânienne (skull)
-#   5  = Peau (scalp)
-#   6  = Yeux
-#  1001-1005 = surfaces correspondantes (triangles)
 
 print("\n" + "=" * 55)
 print("TAGS ANATOMIQUES PRÉSENTS")
@@ -45,7 +34,6 @@ TAG_NAMES = {
     3: "LCR / CSF",
     4: "Crâne (skull)",
     5: "Peau (scalp)",
-    6: "Yeux",
     1001: "Surface WM",
     1002: "Surface GM",
     1003: "Surface CSF",
@@ -58,7 +46,7 @@ for tag in unique_tags:
     mask  = msh.elm.tag1 == tag
     count = np.sum(mask)
     name  = TAG_NAMES.get(tag, "inconnu")
-    print(f"  Tag {tag:>5}  ({name:<25}) : {count:>8} éléments")
+    print(f"  Tag {tag:>5}  {name:<21} : {count:>8} éléments")
 
 # ─── 4. CHAMPS DISPONIBLES (DONNÉES SCALAIRES / VECTORIELLES) ────────────────
 
@@ -93,7 +81,7 @@ print("=" * 55)
 
 # Récupère un champ par son nom (cherche dans nodedata et elmdata)
 def get_field(msh, name):
-    for field in msh.nodedata + msh.elmdata:
+    for field in msh.elmdata:
         if field.field_name == name:
             return field
     return None
@@ -148,10 +136,13 @@ if magnE_field is not None:
 # ─── 7. COORDONNÉES DES NOEUDS ────────────────────────────────────────────────
 
 print("\n" + "=" * 55)
-print("COORDONNÉES")
+print("test truc centre")
 print("=" * 55)
-coords = msh.nodes.node_coord          # shape: (n_noeuds, 3)  en mm
-print(f"  Shape coordonnées : {coords.shape}")
-print(f"  X : [{coords[:,0].min():.1f}, {coords[:,0].max():.1f}] mm")
-print(f"  Y : [{coords[:,1].min():.1f}, {coords[:,1].max():.1f}] mm")
-print(f"  Z : [{coords[:,2].min():.1f}, {coords[:,2].max():.1f}] mm")
+centers = msh.elements_baricenters()[:]
+print(type(centers))
+print(np.shape(centers))
+print("-----------------------")
+# print(dir(msh.elmdata[1].value))
+for i, d in enumerate(msh.elmdata):
+    print(i, d.field_name)
+    print(i, msh.elmdata[i].field_name, msh.elmdata[i].value.shape)

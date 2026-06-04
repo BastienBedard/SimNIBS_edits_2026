@@ -1,5 +1,6 @@
 # Résultats SimNIBS (trop lourds pour git)
-results/results_tdcs/
+results/results_*/
+results/Figures/
 
 
 # Données subjects (trop lourds)
