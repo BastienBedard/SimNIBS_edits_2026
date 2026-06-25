@@ -7,21 +7,29 @@ import json
 
 PROJECT_ROOT  = Path(__file__).parent.parent
 study_id      = "addicott2024"
-n             = 10
+n             = 70
 percentile    = 95
-metric = "focality"
-show_no_atlas = False
+metric = "mean"
+show_no_atlas = True
+HO_atlas      = True
+atlas_name = "Harvard-Oxford" if HO_atlas else "AAL3"
 
-ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_AAL3.json"
-with open(ATLAS_LABELS_PATH, "r") as f:
-    ATLAS_LABELS = {int(k): v for k, v in json.load(f).items()}
+if not HO_atlas:
+    ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / f"atlas_labels_{atlas_name}.json"
+    with open(ATLAS_LABELS_PATH, "r") as f:
+        ATLAS_LABELS = {int(k): v for k, v in json.load(f).items()}
+
 
 # ── Chargement des données ────────────────────────────────────────────────────
-data          = np.load(PROJECT_ROOT / "results" / "results_tms_MA" / study_id / "viz_data_AAL3.npz")
+file_name = f"viz_data_{atlas_name}.npz"
+data          = np.load(PROJECT_ROOT / "results" / "results_tms_MA" / study_id / file_name)
 nodes         = data["nodes"]
 elm_nodes     = data["elm_nodes"]
 magnE         = data["magnE"]
 region_labels = data["region_labels"]
+if HO_atlas:
+    ATLAS_LABELS  = {int(k): v for k, v in enumerate(data["atlas_labels"])}
+
 
 # ── Top N régions par focalité (P95/mean) ────────────────────────────────────
 unique_labels = np.unique(region_labels[region_labels > 0])
@@ -103,7 +111,7 @@ plotter = pv.Plotter(shape=(1, 2), window_size=(1600, 800))
 
 # ── Vue gauche — Atlas ────────────────────────────────────────────────────────
 plotter.subplot(0, 0)
-plotter.add_text(f"Atlas AAL2 — Top {n} regions P{percentile} | {study_id}", font_size=10)
+plotter.add_text(f"Atlas {atlas_name} — Top {n} regions P{percentile} | {study_id}", font_size=10)
 
 if show_no_atlas:
     grid_atlas_display = grid_atlas
@@ -122,7 +130,7 @@ plotter.add_mesh(grid_atlas_display,
 legend_entries = [["other",   [0.3, 0.3, 0.3]],
                   ["no atlas", [0.2, 0.2, 0.2]]]
 for rank, label in enumerate(top_labels):
-    color = list(cmap_atlas(float(rank + 2) / (n + 2)))[:3]
+    color = list(cmap_atlas((rank + 2) / (n + 2)))[:3]
     name  = ATLAS_LABELS.get(label, f"Unknown_{label}")
     legend_entries.append([f"{label} - {name}", color])
     # legend_entries.append([str(label), color])

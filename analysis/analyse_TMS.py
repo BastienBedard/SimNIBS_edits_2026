@@ -6,6 +6,11 @@ import nibabel as nib
 import json
 from nibabel.affines import apply_affine
 from simnibs import mni2subject_coords, subject2mni_coords
+from nilearn import datasets
+
+
+
+
 
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA"
@@ -20,18 +25,19 @@ class ProtocoleAnalysis:
     """
     with open(ATLAS_LABELS_PATH, "r") as f:
         ATLAS_LABELS = {int(k): v for k, v in json.load(f).items()}
-    def __init__(self, study_id, tissue_tags=None):
+    def __init__(self, study_id, tissue_tags=None, HO_atlas=False):
         # study_id    → clé dans le JSON (ex: "eichhammer2003")
         # tissue_tags → [1, 2] = WM + GM par défaut
         
         self.study_id      = study_id
         self.tissue_tags   = tissue_tags if tissue_tags is not None else [1, 2]
-        self.msh           = None   # maillage chargé
-        self.atlas         = None   # atlas NIfTI
-        self.magnE         = None   # valeurs du champ E filtrées
-        self.region_labels = None   # label atlas pour chaque tétraèdre
-        self.tissue_mask   = None   # mask du mesh pour les tissus selectionné
-        self.vols          = None   # volumes des tétraèdres
+        self.HO_atlas      = HO_atlas   # Harvard-Oxford atlas
+        self.msh           = None       # maillage chargé
+        self.atlas         = None       # atlas NIfTI
+        self.magnE         = None       # valeurs du champ E filtrées
+        self.region_labels = None       # label atlas pour chaque tétraèdre
+        self.tissue_mask   = None       # mask du mesh pour les tissus selectionné
+        self.vols          = None       # volumes des tétraèdres
         
 
         self._load_msh()
@@ -54,7 +60,13 @@ class ProtocoleAnalysis:
 
     def _load_atlas(self):
         """Charge l'atlas .nii et prépare la matrice affine."""
-        self.atlas = nib.load(ATLAS_PATH)
+        if self.HO_atlas:
+            atlas_cortical = datasets.fetch_atlas_harvard_oxford('cortl-maxprob-thr25-1mm')
+
+            self.ATLAS_LABELS = {int(k): v for k, v in enumerate(atlas_cortical.labels)}
+            self.atlas = atlas_cortical.maps
+        else:
+            self.atlas = nib.load(ATLAS_PATH)
 
     def _assign_regions(self):
         """
