@@ -1,6 +1,7 @@
 # Résultats SimNIBS (trop lourds pour git)
 results/results_*/
 results/Figures/
+.DS_Store
 
 
 # Données subjects (trop lourds)

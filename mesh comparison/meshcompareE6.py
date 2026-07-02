@@ -27,9 +27,9 @@ MATCH_TISSUE_TAGS = True
 
 # If True, only keep tetrahedra corresponding to the tissue types in the list.
 # If False, keep all tetrahedra.
-COMPARE_ONLY_LIST = False
+COMPARE_ONLY_LIST = True
 
-USED_TAGS = [2]
+USED_TAGS = [1,2,3,4,5,6,7,8,9,10,100,500]
 # 1 = White-Matter
 # 2 = Gray-Matter
 # 3 = CSF
