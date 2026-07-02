@@ -7,11 +7,11 @@ import json
 
 PROJECT_ROOT  = Path(__file__).parent.parent
 study_id      = "addicott2024"
-n             = 70
+n             = 20
 percentile    = 95
-metric = "mean"
-show_no_atlas = True
-HO_atlas      = True
+metric = "focality"
+show_no_atlas = False
+HO_atlas      = False
 atlas_name = "Harvard-Oxford" if HO_atlas else "AAL3"
 
 if not HO_atlas:
@@ -70,11 +70,22 @@ for rank, label in enumerate(top_labels):
 grid_atlas["atlas_top"] = region_display
 
 # ── Colormap discrète atlas ───────────────────────────────────────────────────
-base_colors = list(plt.cm.tab20.colors)
+
+base_color = plt.cm.tab20.colors
+colors = list(base_color)[:n]
+
 all_colors  = [
     (0.2, 0.2, 0.2, 1.0),
     (0.3, 0.3, 0.3, 1.0),
-] + base_colors[:n]
+] + colors
+
+if n > 20:
+    colors_sup = plt.cm.terrain(np.linspace(0, 1, n-20))
+    # Mélange aléatoire de l'ordre
+    rng = np.random.default_rng(seed=42)
+    rng.shuffle(colors_sup)
+    all_colors += list(colors_sup)
+
 cmap_atlas = ListedColormap(all_colors)
 
 # ── Fonction de clip ──────────────────────────────────────────────────────────
@@ -118,7 +129,7 @@ if show_no_atlas:
 else:
     # filtre seulement les éléments à -1 (hors tissu) 
     # garde les 0 (GM/WM hors top N) en gris
-    grid_atlas_display = grid_atlas.threshold(value=-0.5, scalars="atlas_top")
+    grid_atlas_display = grid_atlas.threshold(value=-0.1, scalars="atlas_top")
 
 plotter.add_mesh(grid_atlas_display,
                  scalars="atlas_top",
@@ -130,7 +141,7 @@ plotter.add_mesh(grid_atlas_display,
 legend_entries = [["other",   [0.3, 0.3, 0.3]],
                   ["no atlas", [0.2, 0.2, 0.2]]]
 for rank, label in enumerate(top_labels):
-    color = list(cmap_atlas((rank + 2) / (n + 2)))[:3]
+    color = list(cmap_atlas((rank  / (n+2))+(2/(n+2))))[:3]
     name  = ATLAS_LABELS.get(label, f"Unknown_{label}")
     legend_entries.append([f"{label} - {name}", color])
     # legend_entries.append([str(label), color])
@@ -143,7 +154,7 @@ plotter.add_legend(legend_entries,
 
 cb_atlas = make_clip_callback(grid_atlas, "atlas_top", cmap_atlas,
                                [-1, n], plotter, "atlas_mesh", (0, 0),
-                               threshold=-0.5 if not show_no_atlas else None)
+                               threshold=-0.1 if not show_no_atlas else None)
 
 plotter.add_slider_widget(
     callback=lambda v: cb_atlas(v, "x"),
