@@ -25,25 +25,26 @@ class ProtocoleAnalysis:
     """
     with open(ATLAS_LABELS_PATH, "r") as f:
         ATLAS_LABELS = {int(k): v for k, v in json.load(f).items()}
+    
     def __init__(self, study_id, tissue_tags=None, HO_atlas=False):
-        # study_id    → clé dans le JSON (ex: "eichhammer2003")
-        # tissue_tags → [1, 2] = WM + GM par défaut
-        
+    
         self.study_id      = study_id
-        self.tissue_tags   = tissue_tags if tissue_tags is not None else [1, 2]
+        self.tissue_tags   = tissue_tags if tissue_tags is not None else [1, 2] # WM + GM par défaut
         self.HO_atlas      = HO_atlas   # Harvard-Oxford atlas
-        self.msh           = None       # maillage chargé
-        self.atlas         = None       # atlas NIfTI
-        self.magnE         = None       # valeurs du champ E filtrées
-        self.region_labels = None       # label atlas pour chaque tétraèdre
-        self.tissue_mask   = None       # mask du mesh pour les tissus selectionné
-        self.vols          = None       # volumes des tétraèdres
+
+        self.msh           = None       # Maillage chargé
+        self.atlas         = None       # Atlas NIfTI
+        self.tissue_mask   = None       # Masque du maillage pour les tissus selectionnés
+        self.magnE         = None       # Liste des magnitudes du champ E associées aux tétraèdre
+        self.vols          = None       # Liste des volumes associés aux tétraèdres
+        self.region_labels = None       # Liste des régions de l'atlas associées aux tétraèdres
+        
         
 
-        self._load_msh()
-        self._load_atlas()
-        self._msh_in_tissue()
-        self._assign_regions()
+        self._load_msh()                # Charge le mesh de simulation de l'étude
+        self._load_atlas()              # Charge l'atlas
+        self._msh_in_tissue()           # Crée le masque des tissus, puis découpe le champs E et les volumes avec lui
+        self._assign_regions()          # Associe les tétraèdres à une région anatomique de l'atlas
 
     def _load_msh(self):
         """Charge le .msh et extrait magnE pour les tissus d'intérêt."""
@@ -67,6 +68,15 @@ class ProtocoleAnalysis:
             self.atlas = atlas_cortical.maps
         else:
             self.atlas = nib.load(ATLAS_PATH)
+
+    def _msh_in_tissue(self):
+        """
+        Retourne le mesh associé a un ou plusieurs tissus selon tissue_tags
+        """
+        elm_tags         = self.msh.elm.tag1 # liste des tags dans le mesh 1=WM, 2=GM 
+        self.tissue_mask = np.isin(elm_tags, self.tissue_tags) # masque de selection pour les régions désirées
+        self.magnE       = self.msh.field["magnE"][self.tissue_mask] # découpage du champs avec le masque
+        self.vols        = self.msh.elements_volumes_and_areas()[self.tissue_mask] # Volume des régions désirées
 
     def _assign_regions(self):
         """
@@ -109,20 +119,33 @@ class ProtocoleAnalysis:
         # 8. stockage
         self.region_labels = labels
 
-    def _msh_in_tissue(self):
-        """
-        Retourne le mesh associé a un ou plusieurs tissus selon tissue_tags
-        """
-        elm_tags         = self.msh.elm.tag1 # tag1 : 1=WM, 2=GM (tétraèdres) — 1001/1002 = surfaces (ignorées automatiquement)
-        self.tissue_mask = np.isin(elm_tags, self.tissue_tags) 
-        self.magnE       = self.msh.field["magnE"][self.tissue_mask]
-        self.vols        = self.msh.elements_volumes_and_areas()[self.tissue_mask]
-
     def _get_field(self, name):
         for field in self.msh.elmdata:
             if field.field_name == name:
                 return field
         return None
+
+    def _weighted_median(self, values, weights):
+        """
+        Calcule la médiane pondérée de `values` avec les poids `weights`.
+        """
+
+        values = np.asarray(values)
+        weights = np.asarray(weights)
+
+        # Tri des valeurs
+        order = np.argsort(values)
+        values = values[order]
+        weights = weights[order]
+
+        # Somme cumulée des poids
+        cumulative = np.cumsum(weights)
+
+        # Premier indice dépassant 50 % du poids total
+        cutoff = weights.sum() / 2
+        idx = np.searchsorted(cumulative, cutoff)
+
+        return values[idx]
 
     def get_region_label(self, region_id, use_names=None):
         """
@@ -170,9 +193,36 @@ class ProtocoleAnalysis:
             }
 
         return stats
+    
+    def median_by_region(self):
+        """
+        Retourne un dict {region_label: médiane pondérée de magnE}
+        """
+
+        labels = self.region_labels
+        E = self.magnE
+        vols = self.vols
+
+        region_medians = {}
+
+        for r in np.unique(labels):
+            if r == 0:
+                continue
+
+            mask = labels == r
+
+            if not np.any(mask):
+                continue
+
+            region_medians[r] = self._weighted_median(
+                E[mask],
+                vols[mask]
+            )
+
+        return region_medians
 
     def mean_by_region(self):
-        """Retourne un dict {region_label: moyenne_magnE}."""
+        """Retourne un dict {region_label: moyenne pondérée de magnE}."""
         
         labels = self.region_labels
         E = self.magnE
@@ -290,9 +340,50 @@ class ProtocoleAnalysis:
                 region_fractions[r] = np.sum(below) / np.sum(mask) * 100
 
         return region_fractions
+    
+    def stimulation_ratio(self, metric="mean", percentile=95):
+        """
+        Retourne un dict {region_label: ratio métrique_région / métrique_globale}
+        
+        metric : 'mean'       → moyenne pondérée
+                 'median'     → médiane
+                 'percentile' → P(percentile)
+        """
+        labels = self.region_labels
+        E      = self.magnE
+
+        # calcul de la référence globale
+        if metric == "mean":
+            global_ref = np.average(E, weights=self.vols)
+        elif metric == "median":
+            global_ref = np.median(E)
+        elif metric == "percentile":
+            global_ref = np.percentile(E, percentile)
+        # else:
+        #     raise ValueError(f"metric '{metric}' invalide. Choisir : 'mean', 'median', 'percentile'")
+
+        # calcul par région
+        ratios = {}
+        for r in np.unique(labels):
+            if r == 0:
+                continue
+            mask = labels == r
+            if not np.any(mask):
+                continue
+
+            if metric == "mean":
+                region_ref = np.average(E[mask], weights=self.vols[mask])
+            elif metric == "median":
+                region_ref = np.median(E[mask])
+            elif metric == "percentile":
+                region_ref = np.percentile(E[mask], percentile)
+
+            ratios[r] = region_ref / global_ref
+
+        return ratios
 
     def rank_regions(self, n=5, metric="mean", percentile=95,
-                 threshold_pct=50, by_volume=True, ascending=False):
+                 threshold_pct=50, by_volume=True, ascending=False, ratio_metric="mean"):
         """
         Retourne les n régions classées selon la métrique choisie.
 
@@ -301,6 +392,7 @@ class ProtocoleAnalysis:
                         'focality'         → ratio P(percentile)/moyenne
                         'above_threshold'  → % de volume/tétraèdres au dessus du seuil
                         'below_threshold'  → % de volume/tétraèdres sous le seuil
+                        'stimulation_ratio'→ ratio régions/globale selon un métrique
 
         percentile    : utilisé si metric='percentile' ou 'focality' (défaut 95)
         threshold_pct : utilisé si metric='above_threshold' ou 'below_threshold' (défaut 50)
@@ -316,6 +408,9 @@ class ProtocoleAnalysis:
 
         elif metric == "percentile":
             scores = self.top_percentile_volume(percentile)
+        
+        elif metric == "median":
+            scores = self.median_by_region()
 
         elif metric == "focality":
             means       = self.mean_by_region()
@@ -331,6 +426,9 @@ class ProtocoleAnalysis:
 
         elif metric == "below_threshold":
             scores = self.regions_below_threshold(threshold_pct, by_volume)
+        
+        elif metric == "stimulation_ratio":
+            scores = self.stimulation_ratio(ratio_metric, percentile)
 
         else:
             raise ValueError(f"metric '{metric}' invalid. "
