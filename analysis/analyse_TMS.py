@@ -146,6 +146,24 @@ class ProtocoleAnalysis:
         idx = np.searchsorted(cumulative, cutoff)
 
         return values[idx]
+    
+    def _global_reference(self, metric="mean", percentile=95):
+        """
+        Retourne la valeur de référence globale utilisée pour les seuils.
+        """
+
+        if metric == "mean":
+            return np.average(self.magnE, weights=self.vols)
+
+        elif metric == "median":
+            return self._weighted_median(self.magnE, self.vols)
+
+        elif metric == "percentile":
+            return np.percentile(self.magnE, percentile)
+
+        raise ValueError(
+            "metric must be 'mean', 'median' or 'percentile'"
+        )
 
     def get_region_label(self, region_id, use_names=None):
         """
@@ -268,25 +286,54 @@ class ProtocoleAnalysis:
             region_percentiles[r] = np.percentile(E[mask], percentile)
         return region_percentiles
 
-    def fraction_above_threshold(self, threshold_pct, by_volume=True):
+    def global_fraction_above_threshold(self,threshold_pct,metric="mean",percentile=95,by_volume=True,):
+        """
+        Retourne le % de volume (ou de tétraèdres) du cerveau entier
+        dont magnE dépasse threshold_pct% de la référence globale.
+
+        threshold_pct : float entre 0 et 100
+        by_volume     : True  → % de volume (défaut)
+                        False → % de tétraèdres
+        metric        : 'mean' ou 'percentile'
+        """
+
+        E = self.magnE
+        vols = self.vols
+
+        global_ref = self._global_reference(metric, percentile)
+
+        threshold = (threshold_pct / 100) * global_ref
+
+        above = E > threshold
+
+        if by_volume:
+            return np.sum(vols[above]) / np.sum(vols) * 100
+        else:
+            return np.mean(above) * 100
+
+    def fraction_above_threshold(self, threshold_pct, metric="mean", percentile=95, by_volume=True):
         """
         Pour chaque région, retourne le % de tétraèdres ou de volume dont magnE
-        dépasse threshold_pct% de la moyenne globale GM+WM.
+        dépasse threshold_pct% de la référence globale GM+WM.
         
-        threshold_pct : float entre 0 et 100 (ex: 50 pour 50% de la moyenne globale)
+        threshold_pct : float entre 0 et 100 
+        by_volume     : True  → % de volume (défaut)
+                        False → % de tétraèdres
+        metric        : 'mean' → moyenne globale pondérée (défaut)
+                        'percentile'  → P(percentile) global
         """
         labels = self.region_labels
         E      = self.magnE
 
-        global_mean = np.average(E, weights=self.vols)
-        threshold   = (threshold_pct / 100) * global_mean
+        global_ref = self._global_reference(metric, percentile)
+
+        threshold = (threshold_pct / 100) * global_ref
 
         region_fractions = {}
 
         for r in np.unique(labels):
             if r == 0:
                 continue
-
             mask = labels == r
             if not np.any(mask):
                 continue
@@ -303,7 +350,7 @@ class ProtocoleAnalysis:
 
         return region_fractions
 
-    def regions_below_threshold(self, threshold_pct, by_volume=True):
+    def fraction_below_threshold(self, threshold_pct, by_volume=True):
         """
         Pour chaque région, retourne le % de volume (ou de tétraèdres) dont magnE
         est SOUS threshold_pct% de la moyenne globale GM+WM.
@@ -353,14 +400,7 @@ class ProtocoleAnalysis:
         E      = self.magnE
 
         # calcul de la référence globale
-        if metric == "mean":
-            global_ref = np.average(E, weights=self.vols)
-        elif metric == "median":
-            global_ref = np.median(E)
-        elif metric == "percentile":
-            global_ref = np.percentile(E, percentile)
-        # else:
-        #     raise ValueError(f"metric '{metric}' invalide. Choisir : 'mean', 'median', 'percentile'")
+        global_ref = self._global_reference(metric, percentile)
 
         # calcul par région
         ratios = {}
@@ -383,7 +423,7 @@ class ProtocoleAnalysis:
         return ratios
 
     def rank_regions(self, n=5, metric="mean", percentile=95,
-                 threshold_pct=50, by_volume=True, ascending=False, ratio_metric="mean"):
+                 threshold_pct=50, by_volume=True, ascending=False, reference_metric="mean"):
         """
         Retourne les n régions classées selon la métrique choisie.
 
@@ -399,6 +439,7 @@ class ProtocoleAnalysis:
         by_volume     : utilisé si metric='above_threshold' ou 'below_threshold' (défaut True)
         ascending     : False → plus stimulées en premier (défaut)
                         True  → moins stimulées en premier
+        reference_metric : Métrique de référence pour above threshold et simulation ratio
 
         Retourne : liste de tuples (region_label, valeur) triée
         """
@@ -422,18 +463,13 @@ class ProtocoleAnalysis:
             }
 
         elif metric == "above_threshold":
-            scores = self.fraction_above_threshold(threshold_pct, by_volume)
+            scores = self.fraction_above_threshold(threshold_pct=threshold_pct, metric = reference_metric, percentile=percentile, by_volume=by_volume)
 
         elif metric == "below_threshold":
-            scores = self.regions_below_threshold(threshold_pct, by_volume)
+            scores = self.fraction_below_threshold(threshold_pct, by_volume)
         
         elif metric == "stimulation_ratio":
-            scores = self.stimulation_ratio(ratio_metric, percentile)
-
-        else:
-            raise ValueError(f"metric '{metric}' invalid. "
-                            f"Choose from: 'mean', 'percentile', 'focality', "
-                            f"'above_threshold', 'below_threshold'")
+            scores = self.stimulation_ratio(reference_metric, percentile)
 
         sorted_regions = sorted(scores.items(), key=lambda x: x[1], reverse=not ascending)
 
