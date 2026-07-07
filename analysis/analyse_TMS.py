@@ -147,11 +147,10 @@ class ProtocoleAnalysis:
 
         return values[idx]
     
-    def _global_reference(self, metric="mean", percentile=95):
+    def global_reference(self, metric="mean", percentile=95, ref_metric="mean", threshold_pct=75):
         """
         Retourne la valeur de référence globale utilisée pour les seuils.
         """
-
         if metric == "mean":
             return np.average(self.magnE, weights=self.vols)
 
@@ -160,10 +159,14 @@ class ProtocoleAnalysis:
 
         elif metric == "percentile":
             return np.percentile(self.magnE, percentile)
-
-        raise ValueError(
-            "metric must be 'mean', 'median' or 'percentile'"
-        )
+        
+        elif metric == "focality":
+            return np.percentile(self.magnE, percentile)/np.average(self.magnE, weights=self.vols)
+        
+        elif metric == "above_threshold":
+            return self.global_fraction_above_threshold(threshold_pct=threshold_pct, metric = ref_metric, percentile = percentile)
+        
+        raise ValueError(f"The metric {metric} is not an option")
 
     def get_region_label(self, region_id, use_names=None):
         """
@@ -300,7 +303,7 @@ class ProtocoleAnalysis:
         E = self.magnE
         vols = self.vols
 
-        global_ref = self._global_reference(metric, percentile)
+        global_ref = self.global_reference(metric=metric, percentile=percentile)
 
         threshold = (threshold_pct / 100) * global_ref
 
@@ -310,8 +313,8 @@ class ProtocoleAnalysis:
             return np.sum(vols[above]) / np.sum(vols) * 100
         else:
             return np.mean(above) * 100
-
-    def fraction_above_threshold(self, threshold_pct, metric="mean", percentile=95, by_volume=True):
+    
+    def fraction_above_threshold(self, threshold_pct, ref_metric="mean", percentile=95, by_volume=True):
         """
         Pour chaque région, retourne le % de tétraèdres ou de volume dont magnE
         dépasse threshold_pct% de la référence globale GM+WM.
@@ -325,7 +328,7 @@ class ProtocoleAnalysis:
         labels = self.region_labels
         E      = self.magnE
 
-        global_ref = self._global_reference(metric, percentile)
+        global_ref = self.global_reference(metric=ref_metric, percentile=percentile)
 
         threshold = (threshold_pct / 100) * global_ref
 
@@ -350,7 +353,7 @@ class ProtocoleAnalysis:
 
         return region_fractions
 
-    def fraction_below_threshold(self, threshold_pct, by_volume=True):
+    def fraction_below_threshold(self, threshold_pct, ref_metric="mean", percentile=95, by_volume=True):
         """
         Pour chaque région, retourne le % de volume (ou de tétraèdres) dont magnE
         est SOUS threshold_pct% de la moyenne globale GM+WM.
@@ -363,8 +366,8 @@ class ProtocoleAnalysis:
         E      = self.magnE
         vols   = self.vols
 
-        global_mean = np.average(E, weights=vols)
-        threshold   = (threshold_pct / 100) * global_mean
+        global_ref = self.global_reference(metric=ref_metric, percentile=percentile)
+        threshold   = (threshold_pct / 100) * global_ref
 
         region_fractions = {}
 
@@ -400,7 +403,7 @@ class ProtocoleAnalysis:
         E      = self.magnE
 
         # calcul de la référence globale
-        global_ref = self._global_reference(metric, percentile)
+        global_ref = self.global_reference(metric, percentile)
 
         # calcul par région
         ratios = {}
@@ -463,10 +466,10 @@ class ProtocoleAnalysis:
             }
 
         elif metric == "above_threshold":
-            scores = self.fraction_above_threshold(threshold_pct=threshold_pct, metric = reference_metric, percentile=percentile, by_volume=by_volume)
+            scores = self.fraction_above_threshold(threshold_pct=threshold_pct, ref_metric = reference_metric, percentile=percentile, by_volume=by_volume)
 
         elif metric == "below_threshold":
-            scores = self.fraction_below_threshold(threshold_pct, by_volume)
+            scores = self.fraction_below_threshold(threshold_pct, reference_metric, percentile, by_volume)
         
         elif metric == "stimulation_ratio":
             scores = self.stimulation_ratio(reference_metric, percentile)
