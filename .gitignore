@@ -24,3 +24,4 @@ __pycache__/
 # Windows
 Thumbs.db
 desktop.ini
+.DS_Store
