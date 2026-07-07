@@ -20,7 +20,7 @@ class CorrelationAnalysis:
     Charge les protocoles via ProtocoleAnalysis et compare leurs rankings.
     """
     def __init__(self, study_ids=None, metric="median", percentile=95,
-                 n_regions="all"):
+                 n_regions="all", HO_atlas=True):
         """
         study_ids  : liste de study_id à comparer
                      None → prend tous les dossiers dans RESULTS_DIR
@@ -40,6 +40,7 @@ class CorrelationAnalysis:
             ]
             print(f"  {len(study_ids)} protocoles trouvés automatiquement")
 
+        self.HO_atlas   = HO_atlas
         self.study_ids  = study_ids
         self.metric     = metric
         self.percentile = percentile
@@ -61,7 +62,7 @@ class CorrelationAnalysis:
         for i, study_id in enumerate(self.study_ids):
             print(f"  Chargement -{i}/{len(self.study_ids)}- {study_id}")
             try:
-                p = ProtocoleAnalysis(study_id=study_id)
+                p = ProtocoleAnalysis(study_id=study_id, HO_atlas=self.HO_atlas)
 
                 if self.metric == "mean":
                     scores = p.mean_by_region()
