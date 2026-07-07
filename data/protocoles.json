@@ -34,7 +34,7 @@
       "coil_position_10_20": "AFz",
       "coil_direction": "Fpz",
       "coil_folder": "Drakaki_BrainStim_2022",
-      "coil_file": "MagVenture_MCF-B65_new.ccd",
+      "coil_file": "MagVenture_Cool-B65.ccd",
       "note": "SN non précisé dans l'article. Version _new assumée (SN:2434). Version _old (SN:227) possible."
     },
 
@@ -266,7 +266,7 @@
     },
     "simulation": {
         "coil_position_10_20": "Fpz",
-        "coil_direction": [0, 1, 0],
+        "coil_direction": "NR",
         "coil_folder": "flexible_coils",
         "coil_file": "Brainsway_H4.tcd",
         "note": "H4 helmet — position centrale Cz a revoir",
@@ -290,7 +290,7 @@
     },
     "simulation": {
         "coil_position_10_20": "Fpz",
-        "coil_direction": "Nz",
+        "coil_direction": "NR",
         "coil_folder": "flexible_coils",
         "coil_file": "Brainsway_H4.tcd",
         "note": "H4 helmet — position centrale Cz a revoir",
@@ -313,7 +313,7 @@
     },
     "simulation": {
         "coil_position_10_20": "Fpz",
-        "coil_direction": "Nz",
+        "coil_direction": "NR",
         "coil_folder": "flexible_coils",
         "coil_file": "Brainsway_H4.tcd",
         "note": "H4 helmet — position centrale Cz a revoir",
@@ -336,7 +336,7 @@
     },
     "simulation": {
         "coil_position_10_20": "Fpz",
-        "coil_direction": "Nz",
+        "coil_direction": "NR",
         "coil_folder": "flexible_coils",
         "coil_file": "Brainsway_H4.tcd",
         "note": "H4 helmet — position centrale Cz a revoir",
@@ -359,7 +359,7 @@
     },
     "simulation": {
         "coil_position_10_20": "Fpz",
-        "coil_direction": "Nz",
+        "coil_direction": "NR",
         "coil_folder": "flexible_coils",
         "coil_file": "Brainsway_H4.tcd",
         "note": "H4 helmet — position centrale Cz a revoir",
@@ -385,7 +385,7 @@
       "coil_position_10_20": "F3",
       "coil_direction": "Fpz",
       "coil_folder": "Drakaki_BrainStim_2022",
-      "coil_file": "MagVenture_MCF-B65_new.ccd",
+      "coil_file": "MagVenture_Cool-B65.ccd",
       "note": "SN non précisé dans l'article. Version _new assumée (SN:2434). Version _old (SN:227) possible."
     },
 
@@ -406,7 +406,7 @@
     },
     "simulation": {
         "coil_position_10_20": "Fpz",
-        "coil_direction": "Nz",
+        "coil_direction": "NR",
         "coil_folder": "flexible_coils",
         "coil_file": "NR",
         "note": "H11 helmet —  excluded from SimNIBS a revoir",
@@ -574,8 +574,8 @@
     "simulation": {
       "coil_position_10_20": "F3",
       "coil_direction": "Fpz",
-      "coil_folder": "NR",
-      "coil_file": "NR"
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagVenture_MCF-B65.ccd"
     },
 
     "dosimetry": {
@@ -597,8 +597,8 @@
     "simulation": {
       "coil_position_10_20": "F3",
       "coil_direction": "Fpz",
-      "coil_folder": "NR",
-      "coil_file": "NR"
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagVenture_MCF-B65.ccd"
     },
 
     "dosimetry": {
@@ -622,8 +622,8 @@
       "coil_direction_L": "Fpz",
       "coil_position_10_20_R": "F6",
       "coil_direction_R": "Fpz",
-      "coil_folder": "NR",
-      "coil_file": "NR",
+      "coil_folder": "Drakaki_BrainStim_2022",
+      "coil_file": "MagVenture_MC-B70.ccd",
       "bilateral_method": "two_coils"
     },
 
@@ -647,7 +647,7 @@
       "coil_position_10_20": "F3",
       "coil_direction": "Fpz",
       "coil_folder": "Drakaki_BrainStim_2022",
-      "coil_file": "MagVenture_MCF-B65_new.ccd",
+      "coil_file": "MagVenture_Cool-B65.ccd",
       "note": "SN non précisé dans l'article. Version _new assumée (SN:2434). Version _old (SN:227) possible."
     },
 
@@ -671,7 +671,7 @@
       "coil_position_10_20": "AFz",
       "coil_direction": "Fpz",
       "coil_folder": "Drakaki_BrainStim_2022",
-      "coil_file": "MagVenture_MCF-B65_new.ccd",
+      "coil_file": "MagVenture_Cool-B65.ccd",
       "note": "SN non précisé dans l'article. Version _new assumée (SN:2434). Version _old (SN:227) possible."
     },
 
