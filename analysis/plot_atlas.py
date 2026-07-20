@@ -7,12 +7,12 @@ import json
 
 PROJECT_ROOT  = Path(__file__).parent.parent
 study_id      = "addicott2024"
-n             = 15
+n             = 20
 percentile    = 95
 metric = "focality"
 show_no_atlas = False
 HO_atlas      = False
-atlas_name = "Harvard-Oxford_combined" if HO_atlas else "HO_thr25_1mm"
+atlas_name = "Harvard-Oxford+" if HO_atlas else "HO_118"
 
 if not HO_atlas:
     ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / f"atlas_labels_{atlas_name}.json"
@@ -73,6 +73,15 @@ for rank, label in enumerate(top_labels):
     region_display[region_labels == label] = float(rank + 1)
 grid_atlas["atlas_top"] = region_display
 
+
+
+
+
+
+
+
+
+
 # ── Colormap discrète atlas ───────────────────────────────────────────────────
 
 base_color = plt.cm.tab20.colors
@@ -80,21 +89,22 @@ label_colors = list(base_color)[:n]
 
 all_colors  = [
     (0.2, 0.2, 0.2, 1.0),
-    (0.3, 0.3, 0.3, 1.0),
+    (0.4, 0.4, 0.4, 1.0),
 ] + label_colors
 
-
 if n > 20:
-    colors_sup = plt.cm.terrain(np.linspace(0, 1, n-20))
+    colors_sup = plt.cm.terrain(np.linspace(0, 0.95, n-20))
     # Mélange aléatoire de l'ordre
     rng = np.random.default_rng(seed=42)
     rng.shuffle(colors_sup)
+    colors_sup = [tuple(map(float, c)) for c in colors_sup[:, :3]] # convertire en list de tuple sans transparence
     all_colors += list(colors_sup)
     label_colors += list(colors_sup)
 
 
-cmap_label = ListedColormap(label_colors)
-cmap_atlas = ListedColormap(all_colors)
+
+cmap_label = ListedColormap(label_colors, N=n)
+cmap_atlas = ListedColormap(all_colors, N=n+2)
 
 # ── Fonction de clip ──────────────────────────────────────────────────────────
 def make_clip_callback(grid, scalars, cmap, clim, plotter, actor_name, subplot, threshold=None):
@@ -117,6 +127,7 @@ def make_clip_callback(grid, scalars, cmap, clim, plotter, actor_name, subplot, 
                          scalars=scalars,
                          cmap=cmap,
                          clim=clim,
+                         n_colors=cmap.N if hasattr(cmap, "N") else 256,
                          show_scalar_bar=False,
                          name=actor_name)
         plotter.render()
@@ -132,41 +143,34 @@ plotter = pv.Plotter(shape=(1, 2), window_size=(1600, 800))
 plotter.subplot(0, 0)
 plotter.add_text(f"Atlas {atlas_name} — Top {n} regions P{percentile} | {study_id}", font_size=10)
 
-if show_no_atlas:
-    grid_atlas_display = grid_atlas
-else:
-    # filtre seulement les éléments à -1 (hors tissu) 
-    # garde les 0 (GM/WM hors top N) en gris
-    grid_atlas_display = grid_atlas.threshold(value=-0.1, scalars="atlas_top")
-
-plotter.add_mesh(grid_atlas_display,
+plotter.add_mesh(grid_atlas,
                  scalars="atlas_top",
                  cmap=cmap_atlas,
                  clim=[-1, n],
+                 n_colors=cmap_atlas.N,  
                  show_scalar_bar=False,
                  name="atlas_mesh")
 
 if show_no_atlas:
-    legend_entries = [["other",   [0.3, 0.3, 0.3]],
+    legend_entries = [["other",   [0.4, 0.4, 0.4]],
                     ["no atlas", [0.2, 0.2, 0.2]]]
 else:
-    legend_entries = [["other",   [0.3, 0.3, 0.3]]]
+    legend_entries = [["other",   [0.4, 0.4, 0.4]]]
     
 for rank, label in enumerate(top_labels):
-    color = list(cmap_label((rank  / (n))))[:3]#+(2/(n+2))
+    color = list(cmap_label(rank))[:3]
     name  = ATLAS_LABELS.get(label, f"Unknown_{label}")
     legend_entries.append([f"{label} - {name}", color])
     # legend_entries.append([str(label), color])
 
 plotter.add_legend(legend_entries,
-                   size=(0.25, 0.7),
+                   size=(0.35, 0.7),
                    loc="upper left",
                    font_family="courier",
                    face="rectangle")
 
 cb_atlas = make_clip_callback(grid_atlas, "atlas_top", cmap_atlas,
-                               [-1, n], plotter, "atlas_mesh", (0, 0),
-                               threshold=-0.1 if not show_no_atlas else None)
+                               [-1, n], plotter, "atlas_mesh", (0, 0),threshold=-0.5 if not show_no_atlas else None)
 
 plotter.add_slider_widget(
     callback=lambda v: cb_atlas(v, "x"),
