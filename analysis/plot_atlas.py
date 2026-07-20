@@ -7,18 +7,18 @@ import json
 
 PROJECT_ROOT  = Path(__file__).parent.parent
 study_id      = "addicott2024"
-n             = 20
+n             = 15
 percentile    = 95
 metric = "focality"
 show_no_atlas = False
 HO_atlas      = False
-atlas_name = "Harvard-Oxford" if HO_atlas else "AAL3"
+atlas_name = "Harvard-Oxford_combined" if HO_atlas else "HO_thr25_1mm"
 
 if not HO_atlas:
     ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / f"atlas_labels_{atlas_name}.json"
     with open(ATLAS_LABELS_PATH, "r") as f:
         ATLAS_LABELS = {int(k): v for k, v in json.load(f).items()}
-
+# atlas_name = "Harvard-Oxford_combined"
 
 # ── Chargement des données ────────────────────────────────────────────────────
 file_name = f"viz_data_{atlas_name}.npz"
@@ -33,6 +33,10 @@ if HO_atlas:
 
 # ── Top N régions par focalité (P95/mean) ────────────────────────────────────
 unique_labels = np.unique(region_labels[region_labels > 0])
+print(unique_labels)
+
+if n > len(unique_labels):
+    raise ValueError(f"La valeur de n est trop grande, il n'y a que {len(unique_labels)} régions")
 
 p95_by_region  = {
     label: np.percentile(magnE[region_labels == label], percentile)
@@ -72,12 +76,13 @@ grid_atlas["atlas_top"] = region_display
 # ── Colormap discrète atlas ───────────────────────────────────────────────────
 
 base_color = plt.cm.tab20.colors
-colors = list(base_color)[:n]
+label_colors = list(base_color)[:n]
 
 all_colors  = [
     (0.2, 0.2, 0.2, 1.0),
     (0.3, 0.3, 0.3, 1.0),
-] + colors
+] + label_colors
+
 
 if n > 20:
     colors_sup = plt.cm.terrain(np.linspace(0, 1, n-20))
@@ -85,7 +90,10 @@ if n > 20:
     rng = np.random.default_rng(seed=42)
     rng.shuffle(colors_sup)
     all_colors += list(colors_sup)
+    label_colors += list(colors_sup)
 
+
+cmap_label = ListedColormap(label_colors)
 cmap_atlas = ListedColormap(all_colors)
 
 # ── Fonction de clip ──────────────────────────────────────────────────────────
@@ -138,10 +146,14 @@ plotter.add_mesh(grid_atlas_display,
                  show_scalar_bar=False,
                  name="atlas_mesh")
 
-legend_entries = [["other",   [0.3, 0.3, 0.3]],
-                  ["no atlas", [0.2, 0.2, 0.2]]]
+if show_no_atlas:
+    legend_entries = [["other",   [0.3, 0.3, 0.3]],
+                    ["no atlas", [0.2, 0.2, 0.2]]]
+else:
+    legend_entries = [["other",   [0.3, 0.3, 0.3]]]
+    
 for rank, label in enumerate(top_labels):
-    color = list(cmap_atlas((rank  / (n+2))+(2/(n+2))))[:3]
+    color = list(cmap_label((rank  / (n))))[:3]#+(2/(n+2))
     name  = ATLAS_LABELS.get(label, f"Unknown_{label}")
     legend_entries.append([f"{label} - {name}", color])
     # legend_entries.append([str(label), color])
