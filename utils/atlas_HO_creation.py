@@ -45,7 +45,7 @@ print(f"Distance max : {depths.max():.2f} voxels")
 
 
 out_img = nib.Nifti1Image(combined.astype(np.float32), img_sub.affine, img_sub.header)
-nib.save(out_img, "atlas_HO_118.nii")
+nib.save(out_img, "atlas_HO_115.nii")
 
 # JSON des labels
 labels_cortl = atlas_cortl.labels  # 97 items (0=Background + 96 régions)
@@ -60,7 +60,7 @@ for i in range(1, 97):
     label_map[str(100 + i)] = labels_cortl[i]
 
 import json
-with open("atlas_labels_HO_118.json", "w", encoding="utf-8") as f:
+with open("atlas_labels_HO_115.json", "w", encoding="utf-8") as f:
     json.dump(label_map, f, indent=4, ensure_ascii=False)
 
 print(f"{len(label_map)} régions (attendu : 19 + 96 = 115)")

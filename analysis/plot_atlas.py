@@ -9,10 +9,10 @@ PROJECT_ROOT  = Path(__file__).parent.parent
 study_id      = "addicott2024"
 n             = 20
 percentile    = 95
-metric = "focality"
+metric = "mean"
 show_no_atlas = False
 HO_atlas      = False
-atlas_name = "Harvard-Oxford+" if HO_atlas else "HO_118"
+atlas_name = "Harvard-Oxford+" if HO_atlas else "HO_115"
 
 if not HO_atlas:
     ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / f"atlas_labels_{atlas_name}.json"
@@ -33,7 +33,6 @@ if HO_atlas:
 
 # ── Top N régions par focalité (P95/mean) ────────────────────────────────────
 unique_labels = np.unique(region_labels[region_labels > 0])
-print(unique_labels)
 
 if n > len(unique_labels):
     raise ValueError(f"La valeur de n est trop grande, il n'y a que {len(unique_labels)} régions")
