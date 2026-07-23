@@ -6,36 +6,28 @@ from pathlib import Path
 from datetime import datetime
 import re
 import matplotlib.pyplot as plt
+import csv
 
-#Usually for comparing two meshes, will output a bar graph, .nii and .vtk file for 3D Slicer. 
-#The .vtk file is a point cloud of the reference mesh tetrahedra centers, 
-# with the local relative error as a scalar value. 
-# The .nii file is a sliceable volume of the local relative error, 
-# with the same voxel size and bounding box as the reference mesh.
+#Folder with all .msh files to compare 
+meshcompare_folder = Path.home() / "Desktop" / "simnibs_compare"
 
-# ------------------------------------------------------------
-# Adjustable settings
-# ------------------------------------------------------------
+# Folder where the VTK and NIfTI error maps will be saved
+map_output_folder = Path.home() / "Desktop" / "meshcompare_vtk_error_maps"
 
-# Number of nearest lower-resolution tetrahedra used for interpolation
-K_NEIGHBORS = 8
+# Folder where convergence CSV files will be saved
+csv_output_folder = Path.home() / "Desktop" / "meshcomparegraphdata"
 
-# Distance weighting exponent:
-# 0 = distance is not factored in, neighbors are weighted equally
-# 1 = smoother weighting
-# 2 = closest points dominate more strongly
-DISTANCE_POWER = 2
-
-# If True, only compare tetrahedra with the same tissue tag.
-# If False, ignore tissue tags and allow comparison across tissue types.
-MATCH_TISSUE_TAGS = True
+# Options:
+# "convergence" = line graph and CSV for all comparisons
+# "summary" = tissue-wise P95/P99 bar graphs
+# "3d_map" = VTK point cloud and NIfTI sliceable volume typically for one comparison only
+ANALYSIS_MODE = "convergence"
 
 # If True, only keep tetrahedra corresponding to the tissue types in the list.
 # If False, keep all tetrahedra.
 COMPARE_ONLY_LIST = True
 
 USED_TAGS = [1,2,3,4,5,6,7,8,9,10,100,500]
-#USED_TAGS = [1,2]
 # 1 = White-Matter
 # 2 = Gray-Matter
 # 3 = CSF
@@ -49,44 +41,45 @@ USED_TAGS = [1,2,3,4,5,6,7,8,9,10,100,500]
 # 100 = Electrode
 # 500 = Saline_or_gel
 
-
-# ------------------------------------------------------------
-# Reference-solution settings
-# ------------------------------------------------------------
-
-# Options:
+# Options for reference mesh:
 # "most_tetrahedra" = use the file with the most kept tetrahedra as reference
 # "specific_file" = use REFERENCE_FILE_NAME as reference
 # "next_finer" = compare each mesh to the mesh with the next higher tetrahedra count
-REFERENCE_MODE = "most_tetrahedra"
+REFERENCE_MODE = "specific_file"
 
 # Used only if REFERENCE_MODE = "specific_file"
 REFERENCE_FILE_NAME = "m2m_ernie5_EJV_1_scalar.msh"
 
-# Used only for REFERENCE_MODE = "most_tetrahedra" or "specific_file".
-# If True, the reference file is also compared to itself.
+# ------------------------------------------------------------
+# Default settings
+# ------------------------------------------------------------
+
+# Number of nearest lower-resolution tetrahedra used for interpolation
+K_NEIGHBORS = 8
+
+# Distance weighting exponent:
+# 0 = distance is not factored in, neighbors are weighted equally
+# 1 = smoother weighting
+# 2 = closest points dominate more strongly
+# 3 etc..
+DISTANCE_POWER = 2
+
+# If True, only compare tetrahedra with the same tissue tag.
+# If False, ignore tissue tags and allow comparison across tissue types
+MATCH_TISSUE_TAGS = True
+
+# Used only for REFERENCE_MODE = "most_tetrahedra" or "specific_file"
+# If True, the reference file is also compared to itself
 # This should give 0%.
-# If False, the reference file is skipped.
-#
-# This setting is ignored when REFERENCE_MODE = "next_finer",
-# because the finest mesh has no next finer mesh to compare to.
 INCLUDE_REFERENCE_SELF_COMPARISON = False
-
-
-# ------------------------------------------------------------
-# Output settings
-# ------------------------------------------------------------
-
-# Folder where the VTK error maps will be saved
-vtk_output_folder = Path.home() / "Desktop" / "meshcompare_vtk_error_maps"
 
 # Small value to prevent division by zero in local relative error
 RELATIVE_ERROR_EPSILON = 1e-12
 
-# If True, also write a sliceable 3D NIfTI volume for each comparison.
+# If True, writes a sliceable 3D NIfTI volume for each comparison
 WRITE_NIFTI_VOLUME = True
 
-# Voxel size for the sliceable volume, in millimeters.
+# Voxel size for the sliceable volume, in mm
 VOXEL_SIZE_MM = 0.5
 
 # Maximum distance from a voxel center to a tetrahedron center.
@@ -97,12 +90,10 @@ MAX_ASSIGN_DISTANCE_MM = 2.5
 # Background value outside the assigned error region.
 BACKGROUND_VALUE = 0.0
 
-
-# ------------------------------------------------------------
-# Folder containing all files to compare
-# ------------------------------------------------------------
-
-meshcompare_folder = Path.home() / "Desktop" / "simnibs_compare"
+if ANALYSIS_MODE not in ["convergence", "summary", "3d_map"]:
+    raise ValueError(
+        "Invalid ANALYSIS_MODE. Use 'convergence', 'summary', or '3d_map'."
+    )
 
 if not meshcompare_folder.exists():
     raise FileNotFoundError(f"Folder not found: {meshcompare_folder}")
@@ -213,7 +204,6 @@ def compute_tissue_percentile_summary(error_data):
 
     # First row: global values across all valid reference tetrahedra
     summary.append({
-        "tag": "Global",
         "label": "Global",
         "n_tetrahedra": len(abs_error),
         "total_volume": float(np.sum(volumes)),
@@ -228,7 +218,6 @@ def compute_tissue_percentile_summary(error_data):
         mask = tags == tag
 
         summary.append({
-            "tag": int(tag),
             "label": tissue_label_from_tag(tag),
             "n_tetrahedra": int(np.sum(mask)),
             "total_volume": float(np.sum(volumes[mask])),
@@ -571,25 +560,14 @@ def compute_local_error_data(reference_centers,
     # Local absolute vector error
     local_abs_error = np.linalg.norm(diff, axis=1)
 
-    # Reference and test magnitudes
+    # Reference magnitude
     reference_E_magn = np.linalg.norm(reference_E_valid, axis=1)
-    test_E_magn = np.linalg.norm(test_E_valid, axis=1)
 
     # Local relative vector error, in percent
     local_rel_error_percent = (
         local_abs_error
         / np.maximum(reference_E_magn, RELATIVE_ERROR_EPSILON)
     ) * 100.0
-
-    # Magnitude-only difference
-    local_magn_difference = test_E_magn - reference_E_magn
-    local_abs_magn_difference = np.abs(local_magn_difference)
-
-    # Angle error in degrees
-    dot = np.sum(reference_E_valid * test_E_valid, axis=1)
-    denom = np.maximum(reference_E_magn * test_E_magn, RELATIVE_ERROR_EPSILON)
-    cos_angle = np.clip(dot / denom, -1.0, 1.0)
-    local_angle_error_degrees = np.degrees(np.arccos(cos_angle))
 
     # Squared vector norms
     diff_squared = np.sum(diff**2, axis=1)
@@ -603,16 +581,8 @@ def compute_local_error_data(reference_centers,
     return {
         "global_relative_error_percent": global_relative_error_percent,
         "valid_reference": valid_reference,
-        "reference_E": reference_E_valid,
-        "test_E_on_reference": test_E_valid,
-        "error_vector": diff,
         "local_abs_error": local_abs_error,
         "local_rel_error_percent": local_rel_error_percent,
-        "reference_E_magn": reference_E_magn,
-        "test_E_magn": test_E_magn,
-        "local_magn_difference": local_magn_difference,
-        "local_abs_magn_difference": local_abs_magn_difference,
-        "local_angle_error_degrees": local_angle_error_degrees,
         "reference_tags": reference_tags_valid,
         "reference_volumes": reference_volumes_valid,
     }
@@ -622,9 +592,7 @@ def write_vtk_tetra_error_map(output_path,
                               coords,
                               tet_nodes,
                               valid_reference,
-                              error_data,
-                              test_file_name,
-                              reference_file_name):
+                              error_data):
     """
     Writes a legacy ASCII VTK POLYDATA point cloud.
 
@@ -679,11 +647,6 @@ def write_vtk_tetra_error_map(output_path,
             f.write("LOOKUP_TABLE default\n")
             for value in values:
                 f.write(f"{int(value)}\n")
-
-        def write_vector(name, values):
-            f.write(f"VECTORS {name} float\n")
-            for value in values:
-                f.write(f"{value[0]:.9g} {value[1]:.9g} {value[2]:.9g}\n")
 
         write_scalar("E_vector_relative_error_percent", error_data["local_rel_error_percent"])
         write_int_scalar("tissue_tag", error_data["reference_tags"])
@@ -875,7 +838,8 @@ else:
 # Create output folder
 # ------------------------------------------------------------
 
-vtk_output_folder.mkdir(parents=True, exist_ok=True)
+if ANALYSIS_MODE == "3d_map":
+    map_output_folder.mkdir(parents=True, exist_ok=True)
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -884,8 +848,9 @@ if COMPARE_ONLY_LIST:
 else:
     tissue_label = "all_tissues"
 
-print(f"VTK files will be saved to: {vtk_output_folder}")
-print()
+if ANALYSIS_MODE == "3d_map":
+    print(f"VTK files will be saved to: {map_output_folder}")
+    print()
 
 
 # ------------------------------------------------------------
@@ -917,44 +882,45 @@ if REFERENCE_MODE in ["most_tetrahedra", "specific_file"]:
             match_tissue_tags=MATCH_TISSUE_TAGS
         )
 
-        test_name = safe_name(file)
-        reference_name = safe_name(files[reference_index])
+        vtk_path = None
 
-        vtk_filename = (
-            f"error_{tissue_label}_"
-            f"test_{test_name}_"
-            f"ref_{reference_name}_"
-            f"{timestamp}.vtk"
-        )
+        if ANALYSIS_MODE == "3d_map":
+            test_name = safe_name(file)
+            reference_name = safe_name(files[reference_index])
 
-        vtk_path = vtk_output_folder / vtk_filename
+            vtk_filename = (
+                f"error_{tissue_label}_"
+                f"test_{test_name}_"
+                f"ref_{reference_name}_"
+                f"{timestamp}.vtk"
+            )
 
-        write_vtk_tetra_error_map(
-            output_path=vtk_path,
-            coords=coords_list[reference_index],
-            tet_nodes=tet_nodes_list[reference_index],
-            valid_reference=error_data["valid_reference"],
-            error_data=error_data,
-            test_file_name=Path(file).name,
-            reference_file_name=Path(files[reference_index]).name
-        )
+            vtk_path = map_output_folder / vtk_filename
 
-        if WRITE_NIFTI_VOLUME:
-            nii_filename = vtk_filename.replace(".vtk", ".nii.gz")
-            nii_path = vtk_output_folder / nii_filename
-
-            write_nifti_error_volume(
-                output_path=nii_path,
+            write_vtk_tetra_error_map(
+                output_path=vtk_path,
                 coords=coords_list[reference_index],
                 tet_nodes=tet_nodes_list[reference_index],
                 valid_reference=error_data["valid_reference"],
-                error_data=error_data,
-                voxel_size_mm=VOXEL_SIZE_MM,
-                max_assign_distance_mm=MAX_ASSIGN_DISTANCE_MM,
-                background_value=BACKGROUND_VALUE
+                error_data=error_data
             )
 
-            print(f"  NIfTI sliceable volume saved to: {nii_path}")
+            if WRITE_NIFTI_VOLUME:
+                nii_filename = vtk_filename.replace(".vtk", ".nii.gz")
+                nii_path = map_output_folder / nii_filename
+
+                write_nifti_error_volume(
+                    output_path=nii_path,
+                    coords=coords_list[reference_index],
+                    tet_nodes=tet_nodes_list[reference_index],
+                    valid_reference=error_data["valid_reference"],
+                    error_data=error_data,
+                    voxel_size_mm=VOXEL_SIZE_MM,
+                    max_assign_distance_mm=MAX_ASSIGN_DISTANCE_MM,
+                    background_value=BACKGROUND_VALUE
+                )
+
+                print(f"  NIfTI sliceable volume saved to: {nii_path}")
 
         global_error = error_data["global_relative_error_percent"]
 
@@ -967,29 +933,31 @@ if REFERENCE_MODE in ["most_tetrahedra", "specific_file"]:
         ))
 
         print(f"  Relative vector-field error: {global_error:.6f} %")
-        print(f"  VTK saved to: {vtk_path}")
+        if ANALYSIS_MODE == "3d_map":
+            print(f"  VTK saved to: {vtk_path}")
         print()
 
-        tissue_summary = compute_tissue_percentile_summary(error_data)
+        if ANALYSIS_MODE == "summary":
+            tissue_summary = compute_tissue_percentile_summary(error_data)
 
-        print("Volume-weighted tissue percentile summary:")
-        for row in tissue_summary:
-            print(
-                f"  {row['label']} | "
-                f"n={row['n_tetrahedra']} | "
-                f"volume={row['total_volume']:.6g} | "
-                f"abs P95={row['abs_p95']:.6g} | "
-                f"abs P99={row['abs_p99']:.6g} | "
-                f"rel P95={row['rel_p95']:.6g}% | "
-                f"rel P99={row['rel_p99']:.6g}%"
+            print("Volume-weighted tissue percentile summary:")
+            for row in tissue_summary:
+                print(
+                    f"  {row['label']} | "
+                    f"n={row['n_tetrahedra']} | "
+                    f"volume={row['total_volume']:.6g} | "
+                    f"abs P95={row['abs_p95']:.6g} | "
+                    f"abs P99={row['abs_p99']:.6g} | "
+                    f"rel P95={row['rel_p95']:.6g}% | "
+                    f"rel P99={row['rel_p99']:.6g}%"
+                )
+            print()
+
+            plot_tissue_percentile_summary(
+                summary=tissue_summary,
+                test_file_name=Path(file).name,
+                reference_file_name=Path(files[reference_index]).name
             )
-        print()
-
-        plot_tissue_percentile_summary(
-            summary=tissue_summary,
-            test_file_name=Path(file).name,
-            reference_file_name=Path(files[reference_index]).name
-        )
 
 elif REFERENCE_MODE == "next_finer":
 
@@ -1020,44 +988,45 @@ elif REFERENCE_MODE == "next_finer":
             match_tissue_tags=MATCH_TISSUE_TAGS
         )
 
-        test_name = safe_name(files[test_index])
-        reference_name = safe_name(files[reference_index])
+        vtk_path = None
 
-        vtk_filename = (
-            f"error_{tissue_label}_"
-            f"test_{test_name}_"
-            f"ref_{reference_name}_"
-            f"{timestamp}.vtk"
-        )
+        if ANALYSIS_MODE == "3d_map":
+            test_name = safe_name(files[test_index])
+            reference_name = safe_name(files[reference_index])
 
-        vtk_path = vtk_output_folder / vtk_filename
+            vtk_filename = (
+                f"error_{tissue_label}_"
+                f"test_{test_name}_"
+                f"ref_{reference_name}_"
+                f"{timestamp}.vtk"
+            )
 
-        write_vtk_tetra_error_map(
-            output_path=vtk_path,
-            coords=coords_list[reference_index],
-            tet_nodes=tet_nodes_list[reference_index],
-            valid_reference=error_data["valid_reference"],
-            error_data=error_data,
-            test_file_name=Path(files[test_index]).name,
-            reference_file_name=Path(files[reference_index]).name
-        )
+            vtk_path = map_output_folder / vtk_filename
 
-        if WRITE_NIFTI_VOLUME:
-            nii_filename = vtk_filename.replace(".vtk", ".nii.gz")
-            nii_path = vtk_output_folder / nii_filename
-
-            write_nifti_error_volume(
-                output_path=nii_path,
+            write_vtk_tetra_error_map(
+                output_path=vtk_path,
                 coords=coords_list[reference_index],
                 tet_nodes=tet_nodes_list[reference_index],
                 valid_reference=error_data["valid_reference"],
-                error_data=error_data,
-                voxel_size_mm=VOXEL_SIZE_MM,
-                max_assign_distance_mm=MAX_ASSIGN_DISTANCE_MM,
-                background_value=BACKGROUND_VALUE
+                error_data=error_data
             )
 
-            print(f"  NIfTI sliceable volume saved to: {nii_path}")
+            if WRITE_NIFTI_VOLUME:
+                nii_filename = vtk_filename.replace(".vtk", ".nii.gz")
+                nii_path = map_output_folder / nii_filename
+
+                write_nifti_error_volume(
+                    output_path=nii_path,
+                    coords=coords_list[reference_index],
+                    tet_nodes=tet_nodes_list[reference_index],
+                    valid_reference=error_data["valid_reference"],
+                    error_data=error_data,
+                    voxel_size_mm=VOXEL_SIZE_MM,
+                    max_assign_distance_mm=MAX_ASSIGN_DISTANCE_MM,
+                    background_value=BACKGROUND_VALUE
+                )
+
+                print(f"  NIfTI sliceable volume saved to: {nii_path}")
 
         global_error = error_data["global_relative_error_percent"]
 
@@ -1070,29 +1039,31 @@ elif REFERENCE_MODE == "next_finer":
         ))
 
         print(f"  Relative vector-field error: {global_error:.6f} %")
-        print(f"  VTK saved to: {vtk_path}")
+        if ANALYSIS_MODE == "3d_map":
+            print(f"  VTK saved to: {vtk_path}")
         print()
 
-        tissue_summary = compute_tissue_percentile_summary(error_data)
+        if ANALYSIS_MODE == "summary":
+            tissue_summary = compute_tissue_percentile_summary(error_data)
 
-        print("Volume-weighted tissue percentile summary:")
-        for row in tissue_summary:
-            print(
-                f"  {row['label']} | "
-                f"n={row['n_tetrahedra']} | "
-                f"volume={row['total_volume']:.6g} | "
-                f"abs P95={row['abs_p95']:.6g} | "
-                f"abs P99={row['abs_p99']:.6g} | "
-                f"rel P95={row['rel_p95']:.6g}% | "
-                f"rel P99={row['rel_p99']:.6g}%"
+            print("Volume-weighted tissue percentile summary:")
+            for row in tissue_summary:
+                print(
+                    f"  {row['label']} | "
+                    f"n={row['n_tetrahedra']} | "
+                    f"volume={row['total_volume']:.6g} | "
+                    f"abs P95={row['abs_p95']:.6g} | "
+                    f"abs P99={row['abs_p99']:.6g} | "
+                    f"rel P95={row['rel_p95']:.6g}% | "
+                    f"rel P99={row['rel_p99']:.6g}%"
+                )
+            print()
+
+            plot_tissue_percentile_summary(
+                summary=tissue_summary,
+                test_file_name=Path(files[test_index]).name,
+                reference_file_name=Path(files[reference_index]).name
             )
-        print()
-
-        plot_tissue_percentile_summary(
-            summary=tissue_summary,
-            test_file_name=Path(files[test_index]).name,
-            reference_file_name=Path(files[reference_index]).name
-        )
 
 
 # ------------------------------------------------------------
@@ -1103,13 +1074,94 @@ results_sorted = sorted(results, key=lambda x: x[0])
 
 print("Sorted results:")
 for count, error, test_name, ref_name, vtk_path in results_sorted:
-    print(
-        f"{count} tetrahedra kept | "
-        f"{error:.6f} % | "
-        f"test: {test_name} | "
-        f"reference: {ref_name} | "
-        f"vtk: {vtk_path.name}"
-    )
+    if ANALYSIS_MODE == "3d_map":
+        print(
+            f"{count} tetrahedra kept | "
+            f"{error:.6f} % | "
+            f"test: {test_name} | "
+            f"reference: {ref_name} | "
+            f"vtk: {vtk_path.name}"
+        )
+    else:
+        print(
+            f"{count} tetrahedra kept | "
+            f"{error:.6f} % | "
+            f"test: {test_name} | "
+            f"reference: {ref_name}"
+        )
 
-print()
-print(f"All VTK files saved in: {vtk_output_folder}")
+if ANALYSIS_MODE == "3d_map":
+    print()
+    print(f"All VTK files saved in: {map_output_folder}")
+
+if ANALYSIS_MODE == "convergence":
+    tetra_counts_sorted = np.array([row[0] for row in results_sorted])
+    relative_errors_sorted = np.array([row[1] for row in results_sorted])
+    file_names_sorted = np.array([row[2] for row in results_sorted])
+    reference_file_names_sorted = np.array([row[3] for row in results_sorted])
+
+    plt.plot(tetra_counts_sorted, relative_errors_sorted, marker="o")
+    plt.xlabel("Number of tetrahedra kept")
+
+    if REFERENCE_MODE == "next_finer":
+        plt.ylabel("Relative vector-field difference to next finer mesh (%)")
+        reference_label = "next finer mesh"
+    elif REFERENCE_MODE == "specific_file":
+        plt.ylabel("Relative vector-field error compared to reference (%)")
+        reference_label = REFERENCE_FILE_NAME
+    else:
+        plt.ylabel("Relative vector-field error compared to reference (%)")
+        reference_label = "mesh with most tetrahedra"
+
+    if COMPARE_ONLY_LIST:
+        plt.title(f"Electric-field difference in chosen tissue types\nReference: {reference_label}")
+    else:
+        plt.title(f"Electric-field difference\nReference: {reference_label}")
+
+    plt.grid(True)
+    plt.ylim(bottom=0)
+
+    csv_output_folder.mkdir(parents=True, exist_ok=True)
+
+    if REFERENCE_MODE == "specific_file":
+        reference_name_for_file = Path(REFERENCE_FILE_NAME).stem
+    elif REFERENCE_MODE == "next_finer":
+        reference_name_for_file = "next_finer"
+    else:
+        reference_name_for_file = "most_tetrahedra"
+
+    graph_data_filename = (
+        f"meshcompare_{tissue_label}_ref_{reference_name_for_file}_{timestamp}.csv"
+    )
+    graph_data_path = csv_output_folder / graph_data_filename
+
+    with open(graph_data_path, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([
+            "tetrahedra_kept",
+            "relative_error_percent",
+            "test_file",
+            "reference_file",
+            "reference_mode",
+            "reference_label",
+            "compare_only_list"
+        ])
+
+        for tetra_count, relative_error, test_name, ref_name in zip(
+            tetra_counts_sorted,
+            relative_errors_sorted,
+            file_names_sorted,
+            reference_file_names_sorted
+        ):
+            writer.writerow([
+                tetra_count,
+                relative_error,
+                test_name,
+                ref_name,
+                REFERENCE_MODE,
+                reference_label,
+                COMPARE_ONLY_LIST
+            ])
+
+    print(f"Graph data saved to: {graph_data_path}")
+    plt.show()

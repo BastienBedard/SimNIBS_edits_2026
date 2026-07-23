@@ -86,12 +86,15 @@ def run_tdcs_simulation(m2m_folder):
     tdcs = S.add_tdcslist()
     tdcs.currents = [0.001, -0.001]
 
-    #tdcs.cond[50].name = "metal_rod"
-    #tdcs.cond[50].value = 1000000.0  # S/m
+    # metal rod is tag 51
+    tdcs.cond[50].value = 0.465
+    tdcs.cond[50].name = "metal_rod_tag51"
 
-    tdcs.cond[4].value = 1.0  # S/m
-    #[4] for example modifies scalp because of python 
-    # indexing starting at 0, so 5th element is index 4.
+    # Tag 52 = near-rod refinement shell
+    # This is not metal. It is artificial tissue used to force local mesh refinement.
+    # Choose a tissue-like value.
+    tdcs.cond[51].value = 0.465
+    tdcs.cond[51].name = "near_rod_shell_tag52"
 
     # Tissue tags:
     # 1 = White-Matter
