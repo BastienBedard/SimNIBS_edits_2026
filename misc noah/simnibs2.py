@@ -84,10 +84,10 @@ def run_tdcs_simulation(m2m_folder):
 
     # Create tDCS simulation
     tdcs = S.add_tdcslist()
-    tdcs.currents = [0.001, -0.001]
-
+    tdcs.currents = [0.002, -0.002]
+ 
     # metal rod is tag 51
-    tdcs.cond[50].value = 0.465
+    tdcs.cond[50].value = 1.0e6
     tdcs.cond[50].name = "metal_rod_tag51"
 
     # Tag 52 = near-rod refinement shell
@@ -116,18 +116,16 @@ def run_tdcs_simulation(m2m_folder):
         value = getattr(cond, "value", "no_value")
         print(f"cond[{i}] | name = {name} | value = {value}")
 
-    # Electrode 1: C3
     e1 = tdcs.add_electrode()
     e1.channelnr = 1
-    e1.centre = "C3"
+    e1.centre = "P10"
     e1.shape = "rect"
     e1.dimensions = [50, 50]          # mm
     e1.thickness = 4                  # mm
 
-    # Electrode 2: FC2
     e2 = tdcs.add_electrode()
     e2.channelnr = 2
-    e2.centre = "FC2"
+    e2.centre = "AF3"
     e2.shape = "rect"
     e2.dimensions = [50, 50]          # mm
     e2.thickness = 4                  # mm
