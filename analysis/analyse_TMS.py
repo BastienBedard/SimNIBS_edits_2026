@@ -1,4 +1,3 @@
-import simnibs
 from simnibs import mesh_io
 import numpy as np
 from pathlib import Path
@@ -14,9 +13,9 @@ from nilearn import datasets
 
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA"
-ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas_AAL3.nii"
+ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas_HO_118.nii"
 SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie" 
-ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_AAL3.json"
+ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_HO_118.json"
 
 class ProtocoleAnalysis:
     """
@@ -125,11 +124,12 @@ class ProtocoleAnalysis:
                 return field
         return None
 
-    def _weighted_median(self, values, weights):
+    def _weighted_percentile(self, values, weights, percentile):
         """
-        Calcule la médiane pondérée de `values` avec les poids `weights`.
-        """
+        Calcule le percentile pondéré de `values` avec les poids `weights`.
 
+        percentile : float entre 0 et 100 (ex: 50 pour la médiane, 95 pour P95)
+        """
         values = np.asarray(values)
         weights = np.asarray(weights)
 
@@ -141,11 +141,39 @@ class ProtocoleAnalysis:
         # Somme cumulée des poids
         cumulative = np.cumsum(weights)
 
-        # Premier indice dépassant 50 % du poids total
-        cutoff = weights.sum() / 2
+        # Premier indice dont le poids cumulé atteint la fraction visée
+        cutoff = percentile / 100 * weights.sum()
         idx = np.searchsorted(cumulative, cutoff)
+        idx = min(idx, len(values) - 1)  # sécurité si cutoff == somme totale
 
         return values[idx]
+
+    def weighted_percentile_by_region(self, percentile):
+        """
+        Retourne un dict {region_label: percentile pondéré de magnE}
+        pour chaque région de l'atlas.
+        """
+        labels = self.region_labels
+        E = self.magnE
+        vols = self.vols
+
+        region_values = {}
+
+        for r in np.unique(labels):
+            if r == 0:
+                continue
+
+            mask = labels == r
+            if not np.any(mask):
+                continue
+
+            region_values[r] = self._weighted_percentile(
+                E[mask],
+                vols[mask],
+                percentile
+            )
+
+        return region_values
     
     def global_reference(self, metric="mean", percentile=95, ref_metric="mean", threshold_pct=75):
         """
@@ -155,7 +183,7 @@ class ProtocoleAnalysis:
             return np.average(self.magnE, weights=self.vols)
 
         elif metric == "median":
-            return self._weighted_median(self.magnE, self.vols)
+            return self._weighted_percentile(self.magnE, self.vols, 50)
 
         elif metric == "percentile":
             return np.percentile(self.magnE, percentile)
@@ -219,28 +247,7 @@ class ProtocoleAnalysis:
         """
         Retourne un dict {region_label: médiane pondérée de magnE}
         """
-
-        labels = self.region_labels
-        E = self.magnE
-        vols = self.vols
-
-        region_medians = {}
-
-        for r in np.unique(labels):
-            if r == 0:
-                continue
-
-            mask = labels == r
-
-            if not np.any(mask):
-                continue
-
-            region_medians[r] = self._weighted_median(
-                E[mask],
-                vols[mask]
-            )
-
-        return region_medians
+        return self.weighted_percentile_by_region(50)
 
     def mean_by_region(self):
         """Retourne un dict {region_label: moyenne pondérée de magnE}."""
@@ -265,29 +272,6 @@ class ProtocoleAnalysis:
             region_means[r] = np.average(E[mask], weights=vols[mask])
 
         return region_means
-
-    def top_percentile_volume(self, percentile=95):
-        """
-        Retourne un dict {region_label: valeur_magnE au percentile donné}
-        pour chaque région de l'atlas.
-        
-        percentile : float entre 0 et 100 (ex: 95 pour P95)
-        """
-        labels = self.region_labels
-        E      = self.magnE
-
-        region_percentiles = {}
-
-        for r in np.unique(labels):
-            if r == 0:
-                continue
-
-            mask = labels == r
-            if not np.any(mask):
-                continue
-
-            region_percentiles[r] = np.percentile(E[mask], percentile)
-        return region_percentiles
 
     def global_fraction_above_threshold(self,threshold_pct,metric="mean",percentile=95,by_volume=True,):
         """
@@ -451,14 +435,14 @@ class ProtocoleAnalysis:
             scores = self.mean_by_region()
 
         elif metric == "percentile":
-            scores = self.top_percentile_volume(percentile)
+            scores = self.weighted_percentile_by_region(percentile)
         
         elif metric == "median":
             scores = self.median_by_region()
 
         elif metric == "focality":
             means       = self.mean_by_region()
-            percentiles = self.top_percentile_volume(percentile)
+            percentiles = self.weighted_percentile_by_region(percentile)
             scores = {
                 r: percentiles[r] / means[r]
                 for r in percentiles
