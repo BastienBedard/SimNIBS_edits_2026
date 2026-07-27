@@ -10,9 +10,9 @@ from nilearn import datasets
 
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA"
-ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas_HO_115.nii"
+ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas_HO_AAL3_139.nii"
 SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie" 
-ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_HO_115.json"
+ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_HO_AAL3_139.json"
 
 class ProtocoleAnalysis:
     """
