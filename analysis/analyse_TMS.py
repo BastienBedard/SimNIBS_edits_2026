@@ -183,10 +183,10 @@ class ProtocoleAnalysis:
             return self._weighted_percentile(self.magnE, self.vols, 50)
 
         elif metric == "percentile":
-            return np.percentile(self.magnE, percentile)
+            return self._weighted_percentile(self.magnE, self.vols, percentile)
         
         elif metric == "focality":
-            return np.percentile(self.magnE, percentile)/np.average(self.magnE, weights=self.vols)
+            return self._weighted_percentile(self.magnE, self.vols, percentile)/np.average(self.magnE, weights=self.vols)
         
         elif metric == "above_threshold":
             return self.global_fraction_above_threshold(threshold_pct=threshold_pct, metric = ref_metric, percentile = percentile)
