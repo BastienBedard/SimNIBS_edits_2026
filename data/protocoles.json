@@ -442,7 +442,7 @@
       "coil_position_10_20": "F4",
       "coil_direction": "Fpz",
       "coil_folder": "Drakaki_BrainStim_2022",
-      "coil_file": "MagVenture_MCF-B65.ccd",
+      "coil_file": "MagVenture_MCF-B65_new.ccd",
       "note": "SN non précisé dans l'article. Mais 2015 probablement antérieur a la nouvelle version"
     },
 
@@ -583,7 +583,7 @@
       "coil_position_10_20": "F3",
       "coil_direction": "Fpz",
       "coil_folder": "Drakaki_BrainStim_2022",
-      "coil_file": "MagVenture_MCF-B65.ccd"
+      "coil_file": "MagVenture_MCF-B65_new.ccd"
     },
 
     "dosimetry": {
@@ -680,7 +680,8 @@
     },
 
     "dosimetry": {
-      "intensity_pct_rMT": "NR",
+      "intensity_pct_rMT": 100,
+      "note" : "On suppose la même intensité que les autres article de Li car non précisé ds article.",
       "protocol_type": "rTMS",
       "frequency_hz": 10,
       "n_pulses_per_session": 3000,
@@ -703,7 +704,8 @@
     },
 
     "dosimetry": {
-      "intensity_pct_rMT": "NR",
+      "intensity_pct_rMT": 100,
+      "note" : "On suppose la même intensité que les autres article de Li car non précisé ds article.",
       "protocol_type": "rTMS",
       "frequency_hz": 1,
       "n_pulses_per_session": 900,
@@ -726,7 +728,8 @@
     },
 
     "dosimetry": {
-      "intensity_pct_rMT": "NR",
+      "intensity_pct_rMT": 100,
+      "note" : "On suppose la même intensité que les autres article de Li car non précisé ds article.",
       "protocol_type": "rTMS",
       "frequency_hz": 10,
       "n_pulses_per_session": 3000,
@@ -749,7 +752,8 @@
     },
 
     "dosimetry": {
-      "intensity_pct_rMT": "NR",
+      "intensity_pct_rMT": 100,
+      "note" : "On suppose la même intensité que les autres article de Li car non précisé ds article.",
       "protocol_type": "rTMS",
       "frequency_hz": 1,
       "n_pulses_per_session": 900,

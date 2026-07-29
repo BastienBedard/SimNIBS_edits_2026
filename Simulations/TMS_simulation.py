@@ -9,14 +9,57 @@ PROJECT_ROOT = Path(__file__).parent.parent
 SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie"
 COIL_DIR     = Path(sim_struct.__file__).parent.parent / "resources" / "coil_models"
 JSON_PATH    = PROJECT_ROOT / "data" / "protocoles.json"
-RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA"
+RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA_2"
 os.makedirs(RESULTS_DIR, exist_ok=True)
+
+coil_data = {
+    "Magstim_D70.ccd" : {
+        "MT_in_MSO" : 55.1,
+        "didt_max" : 114.7
+    },
+    "MagVenture_Cool-B65.ccd" : {
+        "MT_in_MSO" : 51.7,
+        "didt_max" : 149.8
+    },
+    "MagVenture_MCF-B65_new.ccd" : {
+        "MT_in_MSO" : 52.4,
+        "didt_max" : 153.7
+    },
+    "MagVenture_MC-B70.ccd" : {
+        "MT_in_MSO" : 34.5,
+        "didt_max" : 155.3
+    },
+    "Brainsway_H4.tcd" : {
+        "MT_in_MSO" : 50,
+        "didt_max" : 53.7
+    }
+}
 
 # ─── CHARGEMENT DU JSON ───────────────────────────────────────────────────────
 with open(JSON_PATH, "r", encoding="utf-8") as f:
     protocoles = json.load(f)
 
 # ─── FONCTION DE SIMULATION ───────────────────────────────────────────────────
+def compute_didt(coil_file, intensity_pct_rmt):
+    """
+    Calcule le dI/dt (en A/s, unité attendue par SimNIBS) à partir de
+    l'intensité de stimulation exprimée en %RMT, en utilisant le MT et
+    le dI/dt_max du coil (Table 2, Drakaki et al. 2022).
+    Hypothèse : relation linéaire entre %MSO et dI/dt.
+    """
+    if coil_file not in coil_data:
+        raise KeyError(f"Pas de données dI/dt_max / MT pour la bobine : {coil_file}")
+
+    mt_mso = coil_data[coil_file]["MT_in_MSO"]
+    didt_max = coil_data[coil_file]["didt_max"]  # en A/µs
+
+    mso_pct = (intensity_pct_rmt / 100) * mt_mso        # %MSO utilisé
+    didt_A_per_us = (mso_pct / 100) * didt_max          # A/µs
+    didt_A_per_s = didt_A_per_us * 1e6                  # conversion en A/s pour SimNIBS
+
+    return didt_A_per_s
+
+
 def run_tms_simulation(study_id, protocole):
     """
     Lance une simulation TMS SimNIBS pour un protocole donné.
@@ -33,19 +76,29 @@ def run_tms_simulation(study_id, protocole):
         print(f"  [ERREUR] Fichier de bobine introuvable : {coil_file}")
         return
 
+    # Calcul du dI/dt à partir de l'intensité en %RMT du protocole
+    intensity_pct_rmt = protocole["dosimetry"]["intensity_pct_rMT"]
+    try:
+        didt = compute_didt(sim_cfg["coil_file"], intensity_pct_rmt)
+    except KeyError as e:
+        print(f"  [ERREUR] {e}")
+        print("default didt (1e6) used.")
+        didt = 1e6
+
     out_dir = os.path.join(RESULTS_DIR, study_id)
-    print(f"\n  → Simulation {study_id} | Position: {eeg_position} | Bobine: {sim_cfg['coil_file']}")
+    print(f"\n  → Simulation {study_id} | Position: {eeg_position} | Bobine: {sim_cfg['coil_file']} | "
+          f"dI/dt: {didt/1e6:.1f} A/µs ({intensity_pct_rmt}% RMT)")
 
     # Coil flexible (helmet) -> nécessite TmsFlexOptimization plutôt qu'un placement rigide
     is_flexible = sim_cfg["coil_folder"] == "flexible_coils"
 
     if is_flexible:
-        _run_flex_coil(study_id, out_dir, coil_file, eeg_position, coil_direction)
+        _run_flex_coil(study_id, out_dir, coil_file, eeg_position, coil_direction, didt)
     else:
-        _run_rigid_coil(study_id, out_dir, coil_file, eeg_position, coil_direction)
+        _run_rigid_coil(study_id, out_dir, coil_file, eeg_position, coil_direction, didt)
 
 
-def _run_rigid_coil(study_id, out_dir, coil_file, eeg_position, coil_direction):
+def _run_rigid_coil(study_id, out_dir, coil_file, eeg_position, coil_direction, didt):
     """Placement rigide standard (coils figure-8, plats)."""
     S = sim_struct.SESSION()
     S.subpath  = SUBJECT_PATH
@@ -58,6 +111,7 @@ def _run_rigid_coil(study_id, out_dir, coil_file, eeg_position, coil_direction):
     pos.centre   = eeg_position
     pos.distance = 4
     pos.pos_ydir = coil_direction
+    pos.didt     = didt
 
     try:
         run_simnibs(S)
@@ -65,8 +119,7 @@ def _run_rigid_coil(study_id, out_dir, coil_file, eeg_position, coil_direction):
     except Exception as e:
         print(f"  [ERREUR] {study_id} : {e}")
 
-
-def _run_flex_coil(study_id, out_dir, coil_file, eeg_position, coil_direction):
+def _run_flex_coil(study_id, out_dir, coil_file, eeg_position, coil_direction, didt):
     """Optimisation + simulation pour un coil flexible (H1/H4/H7, MST-Twin)."""
     tms_opt = opt_struct.TmsFlexOptimization()
     tms_opt.subpath = str(SUBJECT_PATH)
@@ -84,6 +137,7 @@ def _run_flex_coil(study_id, out_dir, coil_file, eeg_position, coil_direction):
     pos = tms_opt.add_position()
     pos.centre   = eeg_position
     pos.pos_ydir = coil_direction
+    pos.didt     = didt
 
     # bornes de recherche ajusté pour la position Fz orienté Fpz 
     tms_opt.global_translation_ranges = [[-5, 5], [-30, 30], [-50, 50]]
@@ -172,6 +226,7 @@ def get_simulations_a_faire(protocoles):
     return a_faire
 
 # ─── BOUCLE PRINCIPALE ────────────────────────────────────────────────────────
+
 
 print("=" * 55)
 print("LANCEMENT DES SIMULATIONS TMS")
