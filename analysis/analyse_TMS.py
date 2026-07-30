@@ -1,4 +1,3 @@
-import simnibs
 from simnibs import mesh_io
 import numpy as np
 from pathlib import Path
@@ -9,14 +8,11 @@ from simnibs import mni2subject_coords, subject2mni_coords
 from nilearn import datasets
 
 
-
-
-
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA"
-ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas_AAL3.nii"
-SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie5,20" 
-ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_AAL3.json"
+ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas_HO_AAL3_139.nii"
+SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie" 
+ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_HO_AAL3_139.json"
 
 class ProtocoleAnalysis:
     """
@@ -125,11 +121,12 @@ class ProtocoleAnalysis:
                 return field
         return None
 
-    def _weighted_median(self, values, weights):
+    def _weighted_percentile(self, values, weights, percentile):
         """
-        Calcule la médiane pondérée de `values` avec les poids `weights`.
-        """
+        Calcule le percentile pondéré de `values` avec les poids `weights`.
 
+        percentile : float entre 0 et 100 (ex: 50 pour la médiane, 95 pour P95)
+        """
         values = np.asarray(values)
         weights = np.asarray(weights)
 
@@ -141,29 +138,60 @@ class ProtocoleAnalysis:
         # Somme cumulée des poids
         cumulative = np.cumsum(weights)
 
-        # Premier indice dépassant 50 % du poids total
-        cutoff = weights.sum() / 2
+        # Premier indice dont le poids cumulé atteint la fraction visée
+        cutoff = percentile / 100 * weights.sum()
         idx = np.searchsorted(cumulative, cutoff)
+        idx = min(idx, len(values) - 1)  # sécurité si cutoff == somme totale
 
         return values[idx]
+
+    def weighted_percentile_by_region(self, percentile):
+        """
+        Retourne un dict {region_label: percentile pondéré de magnE}
+        pour chaque région de l'atlas.
+        """
+        labels = self.region_labels
+        E = self.magnE
+        vols = self.vols
+
+        region_values = {}
+
+        for r in np.unique(labels):
+            if r == 0:
+                continue
+
+            mask = labels == r
+            if not np.any(mask):
+                continue
+
+            region_values[r] = self._weighted_percentile(
+                E[mask],
+                vols[mask],
+                percentile
+            )
+
+        return region_values
     
-    def _global_reference(self, metric="mean", percentile=95):
+    def global_reference(self, metric="mean", percentile=95, ref_metric="mean", threshold_pct=75):
         """
         Retourne la valeur de référence globale utilisée pour les seuils.
         """
-
         if metric == "mean":
             return np.average(self.magnE, weights=self.vols)
 
         elif metric == "median":
-            return self._weighted_median(self.magnE, self.vols)
+            return self._weighted_percentile(self.magnE, self.vols, 50)
 
         elif metric == "percentile":
-            return np.percentile(self.magnE, percentile)
-
-        raise ValueError(
-            "metric must be 'mean', 'median' or 'percentile'"
-        )
+            return self._weighted_percentile(self.magnE, self.vols, percentile)
+        
+        elif metric == "focality":
+            return self._weighted_percentile(self.magnE, self.vols, percentile)/np.average(self.magnE, weights=self.vols)
+        
+        elif metric == "above_threshold":
+            return self.global_fraction_above_threshold(threshold_pct=threshold_pct, metric = ref_metric, percentile = percentile)
+        
+        raise ValueError(f"The metric {metric} is not an option")
 
     def get_region_label(self, region_id, use_names=None):
         """
@@ -216,28 +244,7 @@ class ProtocoleAnalysis:
         """
         Retourne un dict {region_label: médiane pondérée de magnE}
         """
-
-        labels = self.region_labels
-        E = self.magnE
-        vols = self.vols
-
-        region_medians = {}
-
-        for r in np.unique(labels):
-            if r == 0:
-                continue
-
-            mask = labels == r
-
-            if not np.any(mask):
-                continue
-
-            region_medians[r] = self._weighted_median(
-                E[mask],
-                vols[mask]
-            )
-
-        return region_medians
+        return self.weighted_percentile_by_region(50)
 
     def mean_by_region(self):
         """Retourne un dict {region_label: moyenne pondérée de magnE}."""
@@ -263,29 +270,6 @@ class ProtocoleAnalysis:
 
         return region_means
 
-    def top_percentile_volume(self, percentile=95):
-        """
-        Retourne un dict {region_label: valeur_magnE au percentile donné}
-        pour chaque région de l'atlas.
-        
-        percentile : float entre 0 et 100 (ex: 95 pour P95)
-        """
-        labels = self.region_labels
-        E      = self.magnE
-
-        region_percentiles = {}
-
-        for r in np.unique(labels):
-            if r == 0:
-                continue
-
-            mask = labels == r
-            if not np.any(mask):
-                continue
-
-            region_percentiles[r] = np.percentile(E[mask], percentile)
-        return region_percentiles
-
     def global_fraction_above_threshold(self,threshold_pct,metric="mean",percentile=95,by_volume=True,):
         """
         Retourne le % de volume (ou de tétraèdres) du cerveau entier
@@ -300,7 +284,7 @@ class ProtocoleAnalysis:
         E = self.magnE
         vols = self.vols
 
-        global_ref = self._global_reference(metric, percentile)
+        global_ref = self.global_reference(metric=metric, percentile=percentile)
 
         threshold = (threshold_pct / 100) * global_ref
 
@@ -310,8 +294,8 @@ class ProtocoleAnalysis:
             return np.sum(vols[above]) / np.sum(vols) * 100
         else:
             return np.mean(above) * 100
-
-    def fraction_above_threshold(self, threshold_pct, metric="mean", percentile=95, by_volume=True):
+    
+    def fraction_above_threshold(self, threshold_pct, ref_metric="mean", percentile=95, by_volume=True):
         """
         Pour chaque région, retourne le % de tétraèdres ou de volume dont magnE
         dépasse threshold_pct% de la référence globale GM+WM.
@@ -325,7 +309,7 @@ class ProtocoleAnalysis:
         labels = self.region_labels
         E      = self.magnE
 
-        global_ref = self._global_reference(metric, percentile)
+        global_ref = self.global_reference(metric=ref_metric, percentile=percentile)
 
         threshold = (threshold_pct / 100) * global_ref
 
@@ -350,7 +334,7 @@ class ProtocoleAnalysis:
 
         return region_fractions
 
-    def fraction_below_threshold(self, threshold_pct, by_volume=True):
+    def fraction_below_threshold(self, threshold_pct, ref_metric="mean", percentile=95, by_volume=True):
         """
         Pour chaque région, retourne le % de volume (ou de tétraèdres) dont magnE
         est SOUS threshold_pct% de la moyenne globale GM+WM.
@@ -363,8 +347,8 @@ class ProtocoleAnalysis:
         E      = self.magnE
         vols   = self.vols
 
-        global_mean = np.average(E, weights=vols)
-        threshold   = (threshold_pct / 100) * global_mean
+        global_ref = self.global_reference(metric=ref_metric, percentile=percentile)
+        threshold   = (threshold_pct / 100) * global_ref
 
         region_fractions = {}
 
@@ -400,7 +384,7 @@ class ProtocoleAnalysis:
         E      = self.magnE
 
         # calcul de la référence globale
-        global_ref = self._global_reference(metric, percentile)
+        global_ref = self.global_reference(metric, percentile)
 
         # calcul par région
         ratios = {}
@@ -448,14 +432,14 @@ class ProtocoleAnalysis:
             scores = self.mean_by_region()
 
         elif metric == "percentile":
-            scores = self.top_percentile_volume(percentile)
+            scores = self.weighted_percentile_by_region(percentile)
         
         elif metric == "median":
             scores = self.median_by_region()
 
         elif metric == "focality":
             means       = self.mean_by_region()
-            percentiles = self.top_percentile_volume(percentile)
+            percentiles = self.weighted_percentile_by_region(percentile)
             scores = {
                 r: percentiles[r] / means[r]
                 for r in percentiles
@@ -463,10 +447,10 @@ class ProtocoleAnalysis:
             }
 
         elif metric == "above_threshold":
-            scores = self.fraction_above_threshold(threshold_pct=threshold_pct, metric = reference_metric, percentile=percentile, by_volume=by_volume)
+            scores = self.fraction_above_threshold(threshold_pct=threshold_pct, ref_metric = reference_metric, percentile=percentile, by_volume=by_volume)
 
         elif metric == "below_threshold":
-            scores = self.fraction_below_threshold(threshold_pct, by_volume)
+            scores = self.fraction_below_threshold(threshold_pct, reference_metric, percentile, by_volume)
         
         elif metric == "stimulation_ratio":
             scores = self.stimulation_ratio(reference_metric, percentile)
