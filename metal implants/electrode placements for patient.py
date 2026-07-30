@@ -2,11 +2,17 @@ from simnibs import sim_struct, run_simnibs
 from pathlib import Path
 import shutil
 
+
+#This script will run a tDCS simulation for every m2m folder found in the base_folder.
+#You can customize the electrode positions, sizes, 
+# and currents as well as the tissue conductivities
+#You can also customize if the simulation output will contain E, J or V.
+
 # ------------------------------------------------------------
 # Folder containing all m2m folders
 # ------------------------------------------------------------
 
-base_folder = Path("/Users/noahholm/Desktop/m2m_spheres")
+base_folder = Path("/Users/noahholm/Desktop/m2m_folders")
 
 # Automatically find every folder whose name starts with m2m_
 m2m_folders = sorted([
@@ -19,7 +25,7 @@ m2m_folders = sorted([
 output_parent = Path("/Users/noahholm/Desktop/simsfolders")
 
 # Folder where only the final simulation result .msh files will be copied
-simulation_result_folder = Path("/Users/noahholm/Desktop/simnibs_compare_spheres")
+simulation_result_folder = Path("/Users/noahholm/Desktop/simnibs_compare")
 
 simulation_result_folder.mkdir(parents=True, exist_ok=True)
 
@@ -78,7 +84,17 @@ def run_tdcs_simulation(m2m_folder):
 
     # Create tDCS simulation
     tdcs = S.add_tdcslist()
-    tdcs.currents = [0.001, -0.001]
+    tdcs.currents = [0.002, -0.002]
+ 
+    # metal rod is tag 51
+    tdcs.cond[50].value = 1.0e6
+    tdcs.cond[50].name = "metal_rod_tag51"
+
+    # Tag 52 = near-rod refinement shell
+    # This is not metal. It is artificial tissue used to force local mesh refinement.
+    # Choose a tissue-like value.
+    tdcs.cond[51].value = 0.465
+    tdcs.cond[51].name = "near_rod_shell_tag52"
 
     # Tissue tags:
     # 1 = White-Matter
@@ -100,21 +116,35 @@ def run_tdcs_simulation(m2m_folder):
         value = getattr(cond, "value", "no_value")
         print(f"cond[{i}] | name = {name} | value = {value}")
 
-    # Electrode 1: C3
     e1 = tdcs.add_electrode()
     e1.channelnr = 1
-    e1.centre = "C3"
+    e1.centre = "P10"
     e1.shape = "rect"
     e1.dimensions = [50, 50]          # mm
     e1.thickness = 4                  # mm
 
-    # Electrode 2: FC2
     e2 = tdcs.add_electrode()
     e2.channelnr = 2
-    e2.centre = "FC2"
+    e2.centre = "AF3"
     e2.shape = "rect"
     e2.dimensions = [50, 50]          # mm
     e2.thickness = 4                  # mm
+
+    # Electrode 3: Oz
+    # e3 = tdcs.add_electrode()
+    # e3.channelnr = 3
+    # e3.centre = "Oz"
+    # e3.shape = "rect"
+    # e3.dimensions = [50, 50]          # mm
+    # e3.thickness = 4                  # mm
+
+    # Electrode 4: TP10
+    # e4 = tdcs.add_electrode()
+    # e4.channelnr = 4
+    # e4.centre = "TP10"
+    # e4.shape = "rect"
+    # e4.dimensions = [50, 50]          # mm
+    # e4.thickness = 4                  # mm
 
     run_simnibs(S)
 
