@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import csv
 
 #Folder with all .msh files to compare 
-meshcompare_folder = Path.home() / "Desktop" / "simnibs_compare"
+meshcompare_folder = Path.home() / "Desktop" / "simnibs_compare_spheres"
 
 # Folder where the VTK and NIfTI error maps will be saved
 map_output_folder = Path.home() / "Desktop" / "meshcompare_vtk_error_maps"
@@ -21,7 +21,7 @@ csv_output_folder = Path.home() / "Desktop" / "meshcomparegraphdata"
 # "convergence" = line graph and CSV for all comparisons
 # "summary" = tissue-wise P95/P99 bar graphs
 # "3d_map" = VTK point cloud and NIfTI sliceable volume typically for one comparison only
-ANALYSIS_MODE = "convergence"
+ANALYSIS_MODE = "summary"
 
 # If True, only keep tetrahedra corresponding to the tissue types in the list.
 # If False, keep all tetrahedra.
@@ -45,7 +45,7 @@ USED_TAGS = [1,2,3,4,5,6,7,8,9,10,100,500]
 # "most_tetrahedra" = use the file with the most kept tetrahedra as reference
 # "specific_file" = use REFERENCE_FILE_NAME as reference
 # "next_finer" = compare each mesh to the mesh with the next higher tetrahedra count
-REFERENCE_MODE = "specific_file"
+REFERENCE_MODE = "most_tetrahedra"
 
 # Used only if REFERENCE_MODE = "specific_file"
 REFERENCE_FILE_NAME = "m2m_ernie5_EJV_1_scalar.msh"
