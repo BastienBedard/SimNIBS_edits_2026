@@ -1,0 +1,6 @@
+Terminal command:
+
+charm smoker_men sub-NDARINVFJ172LJ5_run-01_T1w.nii sub-NDARINVFJ172LJ5_run-01_T2w.nii --usesettings C:\Users\bedba\Desktop\Maitrise_2026\GitHub_SimNIBS\SimNIBS_edits_2026\data\Smoker_patient_M\charm.ini
+
+erniebig param:
+smoker_men = 

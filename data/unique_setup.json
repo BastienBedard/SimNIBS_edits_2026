@@ -1,0 +1,157 @@
+{
+    "D70_F3": {
+        "simulation": {
+            "coil_position_10_20": "F3",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagStim_D70.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "D70_AFz": {
+        "simulation": {
+            "coil_position_10_20": "AFz",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagStim_D70.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "B65_F3": {
+        "simulation": {
+            "coil_position_10_20": "F3",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_Cool-B65.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "B65_AFz": {
+        "simulation": {
+            "coil_position_10_20": "AFz",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_Cool-B65.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "B65_F5": {
+        "simulation": {
+            "coil_position_10_20": "F5",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_Cool-B65.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "B65_F6": {
+        "simulation": {
+            "coil_position_10_20": "F6",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_Cool-B65.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "MCFB65_F3": {
+        "simulation": {
+            "coil_position_10_20": "F3",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_MCF-B65_new.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "MCFB65_F4": {
+        "simulation": {
+            "coil_position_10_20": "F4",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_MCF-B65_new.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "MCB70_F4": {
+        "simulation": {
+            "coil_position_10_20": "F4",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_MC-B70.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "MCB70_F5": {
+        "simulation": {
+            "coil_position_10_20": "F5",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_MC-B70.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "MCB70_F6": {
+        "simulation": {
+            "coil_position_10_20": "F6",
+            "coil_direction": "Fpz",
+            "coil_folder": "Drakaki_BrainStim_2022",
+            "coil_file": "MagVenture_MC-B70.ccd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    },
+
+    "H4_Fz": {
+        "simulation": {
+            "coil_position_10_20": "Fz",
+            "coil_direction": "Fpz",
+            "coil_folder": "flexible_coils",
+            "coil_file": "Brainsway_H4.tcd"
+        },
+        "dosimetry": {
+            "intensity_pct_rMT": "NR",
+            "protocol_type": "rTMS"
+        }
+    }
+}

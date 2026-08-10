@@ -1,12 +1,19 @@
 # Résultats SimNIBS (trop lourds pour git)
 results/results_*/
 results/Figures/
+results/Figures_correlation/
 .DS_Store
 
 
 # Données subjects (trop lourds)
 data/ernie/m2m_*/
 data/ernie/*.ini
+
+data/Smoker_patient_F/m2m_*/
+data/Smoker_patient_F/*.ini
+
+data/Smoker_patient_M/m2m_*/
+data/Smoker_patient_M/*.ini
 
 # paramètre perso
 data/ernie/simulations_param

@@ -9,24 +9,71 @@ from nilearn import datasets
 
 
 PROJECT_ROOT = Path(__file__).parent.parent
-RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA"
 ATLAS_PATH   = PROJECT_ROOT / "utils" / "atlas_HO_AAL3_139.nii"
-SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie" 
 ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_HO_AAL3_139.json"
+
+# ─── HEAD MODELS ─────────────────────────────────────────────────────────────
+# Un même protocole peut maintenant être simulé sur plusieurs morphologies de
+# tête. Chaque entrée précise où trouver le dossier m2m (nécessaire pour la
+# transformation espace natif → MNI) et le dossier de résultats associé à
+# cette tête.
+#
+# IMPORTANT : adapte les chemins ci-dessous (noms de dossiers) à ta structure
+# réelle sur disque pour smoker_m / smoker_f.
+HEAD_MODELS = {
+    "ernie": {
+        "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie",
+        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_2",
+    },
+    "coils_setups": {
+            "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie",
+            "results_dir":  PROJECT_ROOT / "results" / "results_tms_coils_setups",
+        },
+    "smoker_m": {
+        "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_M" / "m2m_smoker_men",
+        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_smoker_M",
+    },
+    "smoker_f": {
+        "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_F" / "m2m_smoker_women",
+        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_smoker_F",
+    },
+}
+
 
 class ProtocoleAnalysis:
     """
     Charge et analyse le champ électrique d'un protocole TMS simulé.
     Associe les tétraèdres du .msh aux régions de l'atlas.
+
+    Un protocole est maintenant identifié par (study_id, head_model) : le
+    même study_id peut exister sous plusieurs têtes (ernie, smoker_m,
+    smoker_f, ...), chacune avec son propre dossier m2m et son propre
+    dossier de résultats.
     """
     with open(ATLAS_LABELS_PATH, "r") as f:
         ATLAS_LABELS = {int(k): v for k, v in json.load(f).items()}
-    
-    def __init__(self, study_id, tissue_tags=None, HO_atlas=False):
-    
+
+    def __init__(self, study_id, tissue_tags=None, HO_atlas=False,
+                 head_model="ernie"):
+        """
+        head_model   : clé de HEAD_MODELS ("ernie", "smoker_m", "smoker_f").
+        subject_path : surcharge manuelle du dossier m2m (prioritaire sur head_model)
+        results_dir  : surcharge manuelle du dossier de résultats (prioritaire sur head_model)
+        """
         self.study_id      = study_id
-        self.tissue_tags   = tissue_tags if tissue_tags is not None else [1, 2] # WM + GM par défaut
+        self.tissue_tags   = tissue_tags if tissue_tags is not None else [1, 2]  # WM + GM par défaut
         self.HO_atlas      = HO_atlas   # Harvard-Oxford atlas
+        self.head_model    = head_model
+
+        if head_model not in HEAD_MODELS:
+            raise ValueError(
+                f"head_model '{head_model}' inconnu dans HEAD_MODELS. "
+                f"Options : {list(HEAD_MODELS)}, ou fournir subject_path "
+                f"et results_dir directement."
+            )
+
+        self.subject_path = HEAD_MODELS[head_model]["subject_path"]
+        self.results_dir = HEAD_MODELS[head_model]["results_dir"]
 
         self.msh           = None       # Maillage chargé
         self.atlas         = None       # Atlas NIfTI
@@ -34,8 +81,6 @@ class ProtocoleAnalysis:
         self.magnE         = None       # Liste des magnitudes du champ E associées aux tétraèdre
         self.vols          = None       # Liste des volumes associés aux tétraèdres
         self.region_labels = None       # Liste des régions de l'atlas associées aux tétraèdres
-        
-        
 
         self._load_msh()                # Charge le mesh de simulation de l'étude
         self._load_atlas()              # Charge l'atlas
@@ -43,14 +88,17 @@ class ProtocoleAnalysis:
         self._assign_regions()          # Associe les tétraèdres à une région anatomique de l'atlas
 
     def _load_msh(self):
-        """Charge le .msh et extrait magnE pour les tissus d'intérêt."""
+        """Charge le .msh (dans le dossier de résultats propre à cette tête) et extrait magnE."""
         if self.msh is None:
-            study_folder = RESULTS_DIR / self.study_id
+            study_folder = self.results_dir / self.study_id
 
             fichiers_msh = [f for f in study_folder.glob("*.msh") if f.is_file()]
 
             if len(fichiers_msh) != 1:
-                raise ValueError(f"Nombre inattendu de fichiers .msh dans {self.study_id} : {len(fichiers_msh)}")
+                raise ValueError(
+                    f"Nombre inattendu de fichiers .msh dans {self.study_id} "
+                    f"(head_model={self.head_model}) : {len(fichiers_msh)}"
+                )
 
             msh_file = fichiers_msh[0]
             self.msh = mesh_io.read_msh(msh_file)
@@ -78,13 +126,17 @@ class ProtocoleAnalysis:
         """
         Associe chaque tétraèdre (GM/WM) à une région de l'atlas
         via le barycentre des éléments transformé en espace MNI.
+
+        La transformation natif → MNI utilise le dossier m2m propre à la
+        tête sur laquelle CE protocole a été simulé (self.subject_path),
+        et non plus systématiquement celui d'ernie.
         """
         # 1. barycentres des tétraèdres en espace natif
         centers = self.msh.elements_baricenters()[:]
         centers = centers[self.tissue_mask]
 
-        # 2. transformation espace natif Ernie → espace MNI
-        centers_mni = subject2mni_coords(centers, str(SUBJECT_PATH))
+        # 2. transformation espace natif (tête spécifique) → espace MNI
+        centers_mni = subject2mni_coords(centers, str(self.subject_path))
 
         # 3. passage en coordonnées voxel atlas
         inv_affine = np.linalg.inv(self.atlas.affine)

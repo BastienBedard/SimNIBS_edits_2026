@@ -6,14 +6,14 @@ from pathlib import Path
 # Racine du projet
 PROJECT_ROOT = Path(__file__).parent.parent
 
-SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie"
+SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie"#"Smoker_patient_M" / "m2m_smoker_men"
 COIL_DIR     = Path(sim_struct.__file__).parent.parent / "resources" / "coil_models"
-JSON_PATH    = PROJECT_ROOT / "data" / "protocoles.json"
-RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_MA_2"
+JSON_PATH    = PROJECT_ROOT / "data" / "unique_setup.json"
+RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_coils_setups"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 coil_data = {
-    "Magstim_D70.ccd" : {
+    "MagStim_D70.ccd" : {
         "MT_in_MSO" : 55.1,
         "didt_max" : 114.7
     },
@@ -78,9 +78,10 @@ def run_tms_simulation(study_id, protocole):
 
     # Calcul du dI/dt à partir de l'intensité en %RMT du protocole
     intensity_pct_rmt = protocole["dosimetry"]["intensity_pct_rMT"]
+
     try:
         didt = compute_didt(sim_cfg["coil_file"], intensity_pct_rmt)
-    except KeyError as e:
+    except KeyError and TypeError as e:
         print(f"  [ERREUR] {e}")
         print("default didt (1e6) used.")
         didt = 1e6
@@ -239,10 +240,10 @@ if not a_faire:
 else:
     for study_id, protocole in a_faire.items():
         print(f"\n[{study_id}]")
-        print(f"  Région   : {protocole['classification']['target_region']} "
-            f"({protocole['classification']['hemisphere']})")
-        print(f"  Protocole: {protocole['dosimetry']['protocol_type']} "
-            f"| {protocole['dosimetry']['frequency_hz']} Hz")
+        #print(f"  Région   : {protocole['classification']['target_region']} "
+        #    f"({protocole['classification']['hemisphere']})")
+        #print(f"  Protocole: {protocole['dosimetry']['protocol_type']} "
+        #    f"| {protocole['dosimetry']['frequency_hz']} Hz")
         
         if not valider_protocole(study_id, protocole):
             continue   # passe au protocole suivant sans simuler
