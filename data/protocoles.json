@@ -248,7 +248,8 @@
     },
 
     "dosimetry": {
-      "intensity_pct_rMT": "NR",
+      "intensity_pct_rMT": 100,
+      "note": "Intensité non précisé, 100% utilisé par défaut",
       "protocol_type": "rTMS",
       "frequency_hz": 10,
       "n_pulses_per_session": 1200,

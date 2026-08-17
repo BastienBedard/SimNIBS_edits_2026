@@ -6,6 +6,9 @@ import json
 from nibabel.affines import apply_affine
 from simnibs import mni2subject_coords, subject2mni_coords
 from nilearn import datasets
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -510,3 +513,145 @@ class ProtocoleAnalysis:
         sorted_regions = sorted(scores.items(), key=lambda x: x[1], reverse=not ascending)
 
         return sorted_regions if n == "all" else sorted_regions[:n]
+
+    def plot_region_distribution(self, kind="violin", n_regions=None, use_names=None,
+                                  ascending=False, max_points_per_region=20000,
+                                  percentile=95, figsize=(14, 10), color="lightsteelblue",
+                                  show_global_mean=True, show_global_percentile=True,
+                                  show_markers=True, show_outliers=False, random_state=0):
+        """
+        Affiche, pour CE protocole, la distribution du champ magnE par
+        tétraèdre au sein de chaque région (box ou violin plot seaborn),
+        pondérée par le volume des tétraèdres, avec les repères de moyenne
+        et P(percentile) pondérés superposés (même style que
+        CorrelationAnalysis.plot_region_distribution).
+
+        Pondération : seaborn box/violin n'acceptent pas de poids par
+        point — pour respecter quand même la pondération par volume sans
+        dupliquer chaque tétraèdre proportionnellement (ce qui coûterait
+        cher avec des millions d'éléments), un ré-échantillonnage pondéré
+        À TAILLE FIXE est fait par région : max_points_per_region tirages
+        AVEC remise, tirés avec probabilité proportionnelle au volume. Le
+        coût total est donc borné à n_regions × max_points_per_region,
+        indépendamment du nombre réel de tétraèdres dans le maillage.
+
+        C'est une approximation Monte-Carlo (un peu de bruit d'échantillonnage
+        sur la forme de la boîte/violon) — contrairement à la version
+        précédente (bxp/gaussian_kde) qui était exacte. Pour compenser, les
+        marqueurs de moyenne/P(percentile) affichés sont calculés
+        directement sur les données pondérées complètes (via
+        np.average/_weighted_percentile), pas sur le ré-échantillon : ils
+        restent exacts même si la forme de la boîte/violon est approximative.
+        Augmenter max_points_per_region réduit le bruit au prix du temps de
+        calcul/mémoire.
+
+        kind        : "box" ou "violin" (seaborn)
+        n_regions   : None/"all" → toutes les régions
+                      int → garde les n régions avec le plus de tétraèdres
+        use_names   : None (défaut) → auto, comme histogram_metric() : noms
+                      anatomiques si moins de 50 régions affichées, sinon
+                      numéros d'atlas (pour rester lisible)
+                      True/False → force noms / numéros, quel que soit n_regions
+        ascending   : True (défaut) → régions triées par moyenne pondérée croissante
+                      False → décroissante
+        max_points_per_region : taille du ré-échantillon pondéré par région
+        percentile  : percentile affiché en marqueur/ligne (défaut 95)
+        show_global_mean : superpose la moyenne globale pondérée du protocole
+                      (ligne noire pointillée, même couleur que les losanges
+                      de moyenne par région)
+        show_global_percentile : superpose le P(percentile) global pondéré du
+                      protocole (ligne rouge pointillée, même couleur que les
+                      triangles de P(percentile) par région) — désactivé par
+                      défaut
+        show_markers : superpose la moyenne et le P(percentile) pondérés de
+                      chaque région (losange noir / triangle rouge)
+        show_outliers : (kind="box" uniquement) affiche les points aberrants
+                      (fliers) au-delà des moustaches. False les masque —
+                      utile visuellement avec beaucoup de régions/points.
+                      Sans effet sur kind="violin".
+
+        Retourne la liste des region_id affichées, dans l'ordre du plot.
+        """
+        if kind not in ("box", "violin"):
+            raise ValueError(f"kind '{kind}' invalide. Choisir 'box' ou 'violin'")
+
+        labels = self.region_labels
+        E = self.magnE
+        vols = self.vols
+
+        regions = [r for r in np.unique(labels) if r != 0]
+
+        if n_regions not in (None, "all"):
+            counts = {r: int(np.sum(labels == r)) for r in regions}
+            regions = sorted(regions, key=lambda r: counts[r], reverse=True)[:n_regions]
+
+        # stats exactes (pondérées), calculées sur les données complètes —
+        # utilisées à la fois pour l'ordre et pour les marqueurs
+        region_means = {r: np.average(E[labels == r], weights=vols[labels == r]) for r in regions}
+        region_pct   = {r: self._weighted_percentile(E[labels == r], vols[labels == r], percentile)
+                         for r in regions}
+
+        regions = sorted(regions, key=lambda r: region_means[r], reverse=not ascending)
+
+        # auto naming, same rule as histogram_metric(): names when the
+        # displayed set is small enough to stay readable, numbers otherwise
+        effective_use_names = (len(regions) < 50) if use_names is None else use_names
+
+        rng = np.random.default_rng(random_state)
+        records = []
+
+        for r in regions:
+            mask = labels == r
+            vals = E[mask]
+            w = vols[mask]
+            p = w / w.sum()
+            idx = rng.choice(len(vals), size=max_points_per_region, replace=True, p=p)
+            records.extend({"region": r, "value": v} for v in vals[idx])
+
+        df = pd.DataFrame(records)
+
+        labels_display = (
+            self.get_labels_for_regions(regions, use_names=True) if effective_use_names
+            else [str(r) for r in regions]
+        )
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        if kind == "box":
+            sns.boxplot(data=df, x="region", y="value", order=regions, color=color,
+                        showfliers=show_outliers, ax=ax)
+        else:
+            sns.violinplot(data=df, x="region", y="value", order=regions, color=color,
+                            inner="quartile", ax=ax)
+
+        if show_markers:
+            for i, r in enumerate(regions):
+                ax.scatter(i, region_means[r], color="black", marker="D", s=50,
+                           zorder=5, label="Weighted mean" if i == 0 else None)
+                ax.scatter(i, region_pct[r], color="crimson", marker="^", s=60,
+                           zorder=5, label=f"Weighted P{percentile}" if i == 0 else None)
+
+        if show_global_mean:
+            global_mean = self.global_reference(metric="mean")
+            ax.axhline(global_mean, color="black", linestyle="--",
+                       linewidth=1.5, label=f"Global mean ({global_mean:.4f})")
+
+        if show_global_percentile:
+            global_pct = self.global_reference(metric="percentile", percentile=percentile)
+            ax.axhline(global_pct, color="crimson", linestyle="--",
+                       linewidth=1.5, label=f"Global P{percentile} ({global_pct:.4f})")
+
+        if show_markers or show_global_mean or show_global_percentile:
+            ax.legend()
+
+        ax.set_xticks(range(len(regions)))
+        ax.set_xticklabels(labels_display, rotation=45, ha="right", fontsize=8)
+        ax.set_xlabel("Region")
+        ax.set_ylabel("magnE per tetrahedron (volume-weighted)")
+        order_label = "ascending" if ascending else "descending"
+        ax.set_title(f"{kind.capitalize()} plot — magnE per region ({self.study_id}, {order_label})")
+
+        plt.tight_layout()
+        plt.show()
+
+        return regions
