@@ -512,39 +512,73 @@ class CorrelationAnalysis:
 
         return dist_matrix
 
-    def plot_error_heatmap(self, metric="mean", percentile=95, study_ids=None,
+    def plot_error_heatmap(self, data="ratio", metric="mean", percentile=95, study_ids=None,
                         figsize=(14, 12), cmap="YlOrRd", mae_tiny_threshold=0.01):
         """
         Affiche une heatmap (clustermap) du RMSE, du MAE, et de leur ratio entre
-        protocoles, calculés sur le stimulation_ratio par région (donc déjà
-        normalisé, contrairement à plot_heatmap() qui compare des rangs sur des
-        valeurs brutes de champ).
+        protocoles.
 
-        Chaque cellule est annotée "RMSE : MAE : ratio". Le clustering et la
-        couleur restent basés sur RMSE (magnitude) — le ratio est fourni comme
-        contexte additionnel, pas comme signal principal, car il devient instable
-        (bruit) quand RMSE et MAE sont tous deux proches de zéro.
+        data : "ratio" (défaut) → calculé sur stimulation_ratio (région / référence
+                        globale du même protocole). Normalisé, donc invariant au
+                        dI/dt : deux protocoles partageant un coil setup mais avec
+                        des dI/dt différents auront une erreur proche de 0 ici.
+            "raw"    → calculé sur les valeurs brutes de champ (compute_scores(),
+                        voir metric). PAS normalisé : deux protocoles partageant un
+                        coil setup montreront une erreur non nulle due uniquement à
+                        leur dI/dt respectif — c'est le signal qu'on veut isoler ici.
 
-        Interprétation :
+        metric : - si data="ratio" : passé à compute_stimulation_ratios() comme
+                    métrique de référence ('mean', 'median', 'percentile')
+                - si data="raw"   : passé à compute_scores() comme métrique de
+                    score ('mean', 'median', 'percentile'). 'stimulation_ratio'
+                    n'est pas accepté ici — utiliser data="ratio" à la place,
+                    c'est équivalent et plus explicite.
+        percentile           : utilisé si metric='percentile' (les deux cas)
+        study_ids             : liste de study_id à inclure — None → tous
+        mae_tiny_threshold    : si MAE < ce seuil, le ratio RMSE/MAE est affiché
+                                avec 1 seule décimale plutôt que 2, car il devient
+                                peu fiable (bruit numérique) quand les erreurs
+                                sont négligeables.
+
+        Interprétation (les deux cas) :
         RMSE >= MAE toujours (identité mathématique).
         - ratio proche de 1        → différences réparties uniformément
                                         entre régions.
         - ratio nettement > 1      → une ou quelques régions dominent
                                         l'erreur, à inspecter individuellement.
         - RMSE < MAE               → ne devrait jamais arriver, signale un bug.
-
-        metric, percentile   : passés à compute_stimulation_ratios()
-        study_ids            : liste de study_id à inclure — None → tous
-        mae_tiny_threshold    : si MAE < ce seuil, le ratio est affiché avec
-                                1 seule décimale plutôt que 2, car il devient
-                                peu fiable (bruit numérique) quand les erreurs
-                                sont négligeables.
         """
-        ratio_df = self.compute_stimulation_ratios(
-            metric=metric, percentile=percentile, study_ids=study_ids
-        )
+        if data not in ("ratio", "raw"):
+            raise ValueError(f"data '{data}' invalide. Choisir 'ratio' ou 'raw'")
 
-        rmse_matrix, mae_matrix, n_matrix = self._pairwise_ratio_error(ratio_df)
+        if data == "ratio":
+            if metric == "stimulation_ratio":
+                raise ValueError(
+                    "metric='stimulation_ratio' n'a pas de sens avec data='ratio' "
+                    "(c'est déjà ce que data='ratio' calcule). Choisir 'mean', "
+                    "'median' ou 'percentile' comme référence."
+                )
+            score_df = self.compute_stimulation_ratios(
+                metric=metric, percentile=percentile, study_ids=study_ids
+            )
+            data_label = f"stimulation ratio (ref={metric})"
+        else:
+            if metric == "stimulation_ratio":
+                raise ValueError(
+                    "metric='stimulation_ratio' n'a pas de sens avec data='raw'. "
+                    "Utiliser data='ratio' à la place."
+                )
+            score_df = self.compute_scores(metric=metric, percentile=percentile, n_regions="all")
+
+            if study_ids is not None:
+                missing = set(study_ids) - set(score_df.index)
+                if missing:
+                    print(f"Les protocoles suivants n'existent pas dans le dossier: {sorted(missing)}")
+                score_df = score_df.loc[score_df.index.intersection(study_ids)]
+
+            data_label = f"raw {metric}"
+
+        rmse_matrix, mae_matrix, n_matrix = self._pairwise_ratio_error(score_df)
 
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio_matrix = rmse_matrix / mae_matrix
@@ -573,7 +607,6 @@ class CorrelationAnalysis:
         )
 
         n_protocols = len(rmse_matrix)
-        metric_label = f"{metric} (P{percentile})" if metric == "percentile" else metric
 
         # RMSE matrix is already a distance matrix (symmetric, zero diagonal) —
         # build linkage directly from it instead of letting clustermap treat
@@ -600,7 +633,7 @@ class CorrelationAnalysis:
         g.ax_col_dendrogram.set_visible(False)
 
         g.figure.suptitle(
-            f"RMSE : MAE : ratio of stimulation ratio — {metric_label} | "
+            f"RMSE : MAE : ratio of {data_label} — "
             f"{n_protocols} protocols",
             fontsize=12, y=1.02,
         )
@@ -670,10 +703,85 @@ class CorrelationAnalysis:
         plt.setp(g.ax_heatmap.get_yticklabels(), rotation=0, fontsize=8)
         plt.show()
 
+    def plot_region_distribution(self, distribution="mean", kind="violin", percentile=95,
+                              study_ids=None, figsize=(12, 8), order_by="mean", show_outliers=False):
+        """
+        Montre, pour chaque protocole, la distribution des scores par région
+        (box ou violin plot), avec la moyenne globale et le P(percentile)
+        global superposés en points de repère.
+
+        distribution : 'mean' ou 'percentile' → quelle métrique par région utiliser
+                    comme distribution (p.mean_by_region() ou
+                    p.weighted_percentile_by_region(percentile))
+        kind         : 'box' ou 'violin'
+        percentile   : percentile global affiché en overlay (défaut 95)
+        study_ids    : liste de study_id à inclure — None → tous
+        order_by     : 'mean' → protocoles triés par moyenne globale croissante
+                    None  → ordre d'insertion
+
+        Retourne le DataFrame long (protocol, region, value) utilisé pour le plot.
+        """
+        if kind not in ("box", "violin"):
+            raise ValueError(f"kind '{kind}' invalide. Choisir 'box' ou 'violin'")
+
+        protocols = (
+            self.protocols if study_ids is None
+            else {sid: self.protocols[sid] for sid in study_ids if sid in self.protocols}
+        )
+
+        records = []
+        global_means = {}
+        global_p95 = {}
+
+        for study_id, p in protocols.items():
+            if distribution == "mean":
+                region_scores = p.mean_by_region() 
+            elif distribution == "distribution":
+                region_scores = p.weighted_percentile_by_region(percentile)
+            else: 
+                raise ValueError(f"{distribution} is not a valid distribution metric")
+            for region, val in region_scores.items():
+                records.append({"protocol": study_id, "region": region, "value": val})
+
+            global_means[study_id] = p.global_reference(metric="mean")
+            global_p95[study_id] = p.global_reference(metric="percentile", percentile=percentile)
+
+        df = pd.DataFrame(records)
+
+        order = list(protocols.keys())
+        if order_by == "mean":
+            order = sorted(order, key=lambda sid: global_means[sid])
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        if kind == "box":
+            sns.boxplot(data=df, x="protocol", y="value", order=order, showfliers=show_outliers,
+                        color="lightsteelblue", ax=ax)
+        else:
+            sns.violinplot(data=df, x="protocol", y="value", order=order,
+                            color="lightsteelblue", inner="quartile", ax=ax)
+
+        for i, sid in enumerate(order):
+            ax.scatter(i, global_means[sid], color="black", marker="D", s=50,
+                    zorder=5, label="Global mean" if i == 0 else None)
+            ax.scatter(i, global_p95[sid], color="crimson", marker="^", s=60,
+                    zorder=5, label=f"Global P{percentile}" if i == 0 else None)
+
+        ax.legend()
+        ax.set_xlabel("Protocol")
+        ax.set_ylabel(f"Region {distribution} of magnE")
+        ax.set_title(f"Per-region {distribution} distribution across protocols "
+                    f"({kind} plot) — {len(order)} protocols")
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+        plt.tight_layout()
+        plt.show()
+
+        return df
+
     def plot_histogram(self, metric, percentile=95, ref_metric="percentile",
-                        threshold_pct=75, study_ids=None, figsize=(10, 8),
-                        color="steelblue", title=None, xlabel="Protocole",
-                        ylabel=None, ascending=False):
+                    threshold_pct=75, study_ids=None, figsize=(10, 8),
+                    color="steelblue", title=None, xlabel="Protocole",
+                    ylabel=None, ascending=False):
         """
         Méthode commune pour les histogrammes de comparaison entre protocoles.
         Calcule un score par protocole via p.global_reference() et l'affiche
@@ -697,7 +805,8 @@ class CorrelationAnalysis:
         labels, values = s.index.tolist(), s.values
 
         fig, ax = plt.subplots(figsize=figsize)
-        ax.bar(labels, values, color=color)
+        bars = ax.bar(labels, values, color=color)
+        ax.bar_label(bars, fmt="%.2f", padding=3, fontsize=8)
 
         if len(labels) < 50:
             ax.set_xticks(range(len(labels)))
@@ -706,14 +815,19 @@ class CorrelationAnalysis:
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel if ylabel is not None else "Field value")
 
-        title_sup = f"Volume above {threshold_pct}% of global " if metric == "above_threshold" else ""
-        title_sup = f"Volume below {threshold_pct}% of global " if metric == "below_threshold" else title_sup
+        title_sup = f"Volume above {threshold_pct}% of global {ref_metric} " if metric == "above_threshold" else ""
+        title_sup = f"Volume above {threshold_pct}% of global P{percentile} " if metric == "below_threshold" and ref_metric == "percentile" else title_sup
+        title_sup = f"Volume below {threshold_pct}% of global {ref_metric} " if metric == "below_threshold" else title_sup
         title_sup = "Stimulation ratio in " if metric == "stimulation_ratio" else title_sup
         title_sup = "Mean " if metric == "mean" else title_sup
         title_sup = f"P{percentile} " if metric == "percentile" else title_sup
 
         ax.set_title(title) if title is not None else \
             ax.set_title(f"{title_sup}Field Value — {len(labels)} protocols")
+
+        # give the labels room so they don't get clipped at the top
+        ymax = values.max()
+        ax.set_ylim(top=ymax * 1.1 if ymax > 0 else ymax * 0.9)
 
         plt.tight_layout()
         plt.show()
@@ -743,3 +857,135 @@ class CorrelationAnalysis:
             metric="percentile", percentile=percentile, study_ids=study_ids,
             figsize=figsize, ylabel=f"P{percentile} field value",
         )
+
+    def export_summary(self, percentile_low=95, percentile_high=99,
+                    threshold_pct=75, threshold_ref_percentile=95,
+                    n_top_regions=5, top_regions_metric="mean",
+                    top_regions_percentile=95,
+                    study_ids=None, output_path=None,
+                    decimals=3, figsize=None, fontsize=9,
+                    header_color="#40466e", row_colors=("#f1f1f2", "white")):
+        """
+        Exporte un résumé par protocole (mean, P95, P99, volume au-dessus du
+        seuil, top régions) dans un DataFrame, sauvegardé en CSV si output_path
+        est fourni, et TOUJOURS affiché sous forme de tableau matplotlib
+        (sauvegardable via l'icône de Jupyter). Pensé pour être partagé avec
+        une collègue (Excel / R).
+
+        percentile_low, percentile_high : les deux percentiles rapportés
+                        (défaut 95 et 99)
+        threshold_pct, threshold_ref_percentile : le volume rapporté est le %
+                        de volume au-dessus de threshold_pct% du P(threshold_ref_percentile)
+                        global (défaut : 75% du P95 global)
+        n_top_regions : nombre de régions les mieux classées à inclure (défaut 5)
+        top_regions_metric : métrique utilisée pour classer les régions —
+                        'mean', 'median', ou 'percentile'
+        top_regions_percentile : percentile utilisé si top_regions_metric='percentile'
+                        (défaut 95, ignoré sinon)
+        study_ids     : liste de study_id à inclure — None → tous
+        output_path   : chemin du fichier CSV à écrire — None → pas d'écriture,
+                        seulement le DataFrame retourné (le tableau est quand
+                        même affiché dans les deux cas)
+        decimals, figsize, fontsize, header_color, row_colors : voir _plot_summary_table()
+
+        Retourne un DataFrame (une ligne par protocole).
+        """
+        if top_regions_metric not in ("mean", "median", "percentile"):
+            raise ValueError(
+                f"top_regions_metric '{top_regions_metric}' invalide. "
+                f"Choisir 'mean', 'median', ou 'percentile'"
+            )
+
+        protocols = (
+            self.protocols if study_ids is None
+            else {sid: self.protocols[sid] for sid in study_ids if sid in self.protocols}
+        )
+
+        # suffixe de colonne pour identifier la métrique utilisée pour le top region
+        value_col_suffix = (
+            f"P{top_regions_percentile}"
+            if top_regions_metric == "percentile"
+            else top_regions_metric
+        )
+
+        records = []
+        for study_id, p in protocols.items():
+            mean_val = p.global_reference(metric="mean")
+            p_low  = p.global_reference(metric="percentile", percentile=percentile_low)
+            p_high = p.global_reference(metric="percentile", percentile=percentile_high)
+            vol_above = p.global_fraction_above_threshold(
+                threshold_pct=threshold_pct, metric="percentile",
+                percentile=threshold_ref_percentile
+            )
+
+            row = {
+                "study_id": study_id,
+                "head_model": self.head_model,
+                "mean": mean_val,
+                f"P{percentile_low}": p_low,
+                f"P{percentile_high}": p_high,
+                f"volume_pct_above_{threshold_pct}pct_of_P{threshold_ref_percentile}": vol_above,
+            }
+
+            top_regions = p.rank_regions(
+                n=n_top_regions, metric=top_regions_metric, percentile=top_regions_percentile
+            )
+            for i, (region_id, value) in enumerate(top_regions, start=1):
+                row[f"top{i}_region_number"] = int(region_id)
+                row[f"top{i}_region_name"] = p.ATLAS_LABELS.get(int(region_id), "unknown")
+                row[f"top{i}_region_value_{value_col_suffix}"] = value
+
+            records.append(row)
+
+        df = pd.DataFrame(records)
+
+        if output_path is not None:
+            df.to_csv(output_path, index=False)
+            print(f"  Résumé sauvegardé : {output_path} ({len(df)} protocoles)")
+
+        self._plot_summary_table(df, decimals=decimals, figsize=figsize, fontsize=fontsize,
+                                header_color=header_color, row_colors=row_colors)
+
+        return df
+
+    def _plot_summary_table(self, df, decimals=3, figsize=None, fontsize=9,
+                            header_color="#40466e", row_colors=("#f1f1f2", "white")):
+        """
+        Affiche un DataFrame déjà construit (typiquement par export_summary())
+        sous forme de tableau matplotlib, pour pouvoir le sauvegarder comme une
+        figure (icône de sauvegarde de Jupyter) plutôt que comme un DataFrame HTML.
+
+        decimals  : nombre de décimales pour l'arrondi des colonnes numériques
+        figsize   : None → calculé automatiquement selon le nombre de lignes/colonnes
+        """
+        display_df = df.round(decimals)
+
+        if figsize is None:
+            figsize = (max(10, display_df.shape[1] * 1.3), max(2, 0.5 * (len(display_df) + 1)))
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.axis("off")
+
+        table = ax.table(
+            cellText=display_df.values,
+            colLabels=display_df.columns,
+            cellLoc="center",
+            loc="center",
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(fontsize)
+        table.auto_set_column_width(col=list(range(display_df.shape[1])))
+
+        # style header row + alternating row colors, même esprit que les heatmaps
+        for (row, col), cell in table.get_celld().items():
+            if row == 0:
+                cell.set_text_props(weight="bold", color="white")
+                cell.set_facecolor(header_color)
+            else:
+                cell.set_facecolor(row_colors[row % 2])
+
+        ax.set_title(f"Protocol summary — {self.head_model} ({len(display_df)} protocols)",
+                    fontsize=fontsize + 3, pad=20)
+
+        plt.tight_layout()
+        plt.show()
