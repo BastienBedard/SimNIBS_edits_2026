@@ -1,3 +1,4 @@
+#meshcompareE10
 from simnibs import mesh_io
 import numpy as np
 import nibabel as nib
@@ -9,7 +10,7 @@ import matplotlib.pyplot as plt
 import csv
 
 #Folder with all .msh files to compare 
-meshcompare_folder = Path.home() / "Desktop" / "simnibs_compare_spheres"
+meshcompare_folder = Path.home() / "Desktop" / "simnibs_compare"
 
 # Folder where the VTK and NIfTI error maps will be saved
 map_output_folder = Path.home() / "Desktop" / "meshcompare_vtk_error_maps"
@@ -21,7 +22,7 @@ csv_output_folder = Path.home() / "Desktop" / "meshcomparegraphdata"
 # "convergence" = line graph and CSV for all comparisons
 # "summary" = tissue-wise P95/P99 bar graphs
 # "3d_map" = VTK point cloud and NIfTI sliceable volume typically for one comparison only
-ANALYSIS_MODE = "summary"
+ANALYSIS_MODE = "convergence"
 
 # If True, only keep tetrahedra corresponding to the tissue types in the list.
 # If False, keep all tetrahedra.
