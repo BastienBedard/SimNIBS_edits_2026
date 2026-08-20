@@ -1,6 +1,6 @@
 # Résultats SimNIBS (trop lourds pour git)
 results/results_*/
-results/Figures/
+results/Figures_*/
 results/Figures_correlation/
 .DS_Store
 

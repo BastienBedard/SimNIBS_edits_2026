@@ -3,4 +3,7 @@ Terminal command:
 charm smoker_women sub-NDARINVDN485GPF_run-01_T1w.nii sub-NDARINVDN485GPF_run-01_T2w.nii --usesettings C:\Users\bedba\Desktop\Maitrise_2026\GitHub_SimNIBS\SimNIBS_edits_2026\data\Smoker_patient_F\charm.ini
 
 erniebig param:
-smoker_women = 
+smoker_women = {"standard": {"range": [1, 5], "slope": 1.0},
+                     "1": {"range": [1, 7], "slope": 1.0},
+                     "2": {"range": [1, 2], "slope": 1.0},
+                     "5": {"range": [1, 10], "slope": 0.6}}

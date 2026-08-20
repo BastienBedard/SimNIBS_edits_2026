@@ -19,9 +19,33 @@ HEAD_MODELS = {
         "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie",
         "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_2",
     },
+    "ernie_big": {
+            "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_erniebig",
+            "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_big",
+        },
+    "ernie_new": {
+                "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_new",
+                "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_new",
+            },
+    "ernie_new_2": {
+                "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_new_2",
+                "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_new_2",
+            },
+    "ernie_small": {
+                "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_small",
+                "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_small",
+            },
     "coils_setups": {
             "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie",
             "results_dir":  PROJECT_ROOT / "results" / "results_tms_coils_setups",
+        },
+    "coils_setups_M": {
+            "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_M" / "m2m_smoker_men",
+            "results_dir":  PROJECT_ROOT / "results" / "results_tms_coils_setups_M",
+        },
+    "coils_setups_F": {
+            "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_F" / "m2m_smoker_women",
+            "results_dir":  PROJECT_ROOT / "results" / "results_tms_coils_setups_F",
         },
     "smoker_m": {
         "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_M" / "m2m_smoker_men",
@@ -736,7 +760,7 @@ class CorrelationAnalysis:
         for study_id, p in protocols.items():
             if distribution == "mean":
                 region_scores = p.mean_by_region() 
-            elif distribution == "distribution":
+            elif distribution == "percentile":
                 region_scores = p.weighted_percentile_by_region(percentile)
             else: 
                 raise ValueError(f"{distribution} is not a valid distribution metric")

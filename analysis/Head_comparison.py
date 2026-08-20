@@ -5,8 +5,33 @@ import seaborn as sns
 from scipy.stats import spearmanr
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import linkage
-
+from matplotlib.colors import ListedColormap
 from analyse_TMS import ProtocoleAnalysis, HEAD_MODELS
+
+
+# ─── HELPER ──────────────────────────────────────────────────────────────────
+
+def _build_region_colormap(n):
+    """
+    Palette catégorielle avec n couleurs toujours distinctes, pour colorer
+    les régions dans plot_ranking_matrix (color_by="region"). tab20 seul ne
+    fournit que 20 couleurs fixes — au-delà, les codes bouclent et plusieurs
+    régions finissent par partager une couleur. On garde tab20 pour les 20
+    premières (familières, bien contrastées), puis on étend avec des
+    couleurs échantillonnées sur la colormap terrain (mélangées pour éviter
+    les dégradés adjacents trop proches) pour le reste.
+    """
+    base_color = plt.cm.tab20.colors
+    label_colors = list(base_color)[:min(n, 20)]
+
+    if n > 20:
+        colors_sup = plt.cm.terrain(np.linspace(0, 0.95, n - 20))
+        rng = np.random.default_rng(seed=42)
+        rng.shuffle(colors_sup)
+        colors_sup = [tuple(map(float, c)) for c in colors_sup[:, :3]]
+        label_colors += colors_sup
+
+    return ListedColormap(label_colors, N=n)
 
 # ─── CLASSE ──────────────────────────────────────────────────────────────────
 
@@ -58,7 +83,7 @@ class HeadModelComparison:
 
         print(f"\n  {len(self.head_models)} têtes chargées pour {self.study_id}")
 
-    def compute_scores(self, metric="median", percentile=95, n_regions="all"):
+    def compute_scores(self, metric="mean", percentile=95, n_regions="all"):
         """
         Calcule les scores par région pour chaque tête, pour ce protocole.
 
@@ -99,7 +124,7 @@ class HeadModelComparison:
 
         return df
 
-    def ranking_matrix(self, metric="median", percentile=95, n_regions="all"):
+    def ranking_matrix(self, metric="mean", percentile=95, n_regions="all"):
         """
         Construit une matrice où chaque ligne correspond à une tête (head
         model) et chaque colonne à une position de rang (Rank 1, Rank 2, ...),
@@ -128,7 +153,7 @@ class HeadModelComparison:
 
         return rank_df
 
-    def plot_ranking_matrix(self, metric="median", percentile=95, n_top=20,
+    def plot_ranking_matrix(self, metric="mean", percentile=95, n_top=20,
                              show_names=False, figsize=None, cmap=None,
                              annot_fontsize=8, color_by="region"):
         """
@@ -178,8 +203,21 @@ class HeadModelComparison:
                 codes_flat.reshape(plot_df.shape),
                 index=plot_df.index, columns=plot_df.columns,
             )
+            n_unique = len(uniques)
+
+            # toujours n_unique couleurs distinctes, même au-delà de 20 régions
+            if cmap is None:
+                cmap = _build_region_colormap(n_unique)
+
+            # borne la normalisation pour que chaque code entier
+            # [0, n_unique - 1] tombe exactement sur une couleur de la
+            # palette, plutôt que d'être interpolé par seaborn
+            heatmap_vmin, heatmap_vmax = -0.5, n_unique - 0.5
         else:
             color_matrix = value_df
+            heatmap_vmin = heatmap_vmax = None
+        if cmap is None and color_by == "value":
+            cmap = "viridis"
 
         if show_names:
             annot_df = plot_df.map(
@@ -201,9 +239,6 @@ class HeadModelComparison:
             width_factor = 1.4 if show_names else 0.9
             figsize = (max(8, plot_df.shape[1] * width_factor), max(4, plot_df.shape[0] * 0.5))
 
-        if cmap is None:
-            cmap = "viridis" if color_by == "value" else "tab20"
-
         fig, ax = plt.subplots(figsize=figsize)
         sns.heatmap(
             color_matrix,
@@ -211,6 +246,8 @@ class HeadModelComparison:
             fmt="",
             cmap=cmap,
             cbar=(color_by == "value"),
+            vmin=heatmap_vmin,
+            vmax=heatmap_vmax,
             linewidths=0.5,
             linecolor="white",
             annot_kws={"size": annot_fontsize},
@@ -339,7 +376,7 @@ class HeadModelComparison:
         return rho_matrix, dist_matrix, n_matrix
 
     def plot_heatmap(self, metric="mean", percentile=95, head_models=None,
-                      n_regions=None, figsize=(8, 6)):
+                      n_regions=None, heat_color="correlation", figsize=(8, 6)):
         """
         Affiche la heatmap (clustermap) de corrélation de Spearman entre
         têtes, pour CE protocole (self.study_id) — colorée et clusterisée
@@ -386,14 +423,25 @@ class HeadModelComparison:
         n_heads = len(corr_matrix)
         metric_label = f"{metric} (P{percentile})" if metric == "percentile" else metric
 
-        g = sns.clustermap(corr_matrix,
+        if heat_color=="correlation":
+            heat_map_matrix = corr_matrix
+            vmin, vmax = -1, 1
+            cmap="coolwarm"
+        elif heat_color=="mean_dist":
+            heat_map_matrix = dist_matrix
+            vmin, vmax = 0, dist_matrix.max(axis=None, numeric_only=True)
+            cmap = "Reds"
+        g = sns.clustermap(heat_map_matrix,
                     figsize=figsize,
                     annot=annot_df,
                     fmt="",
-                    cmap="coolwarm",
-                    vmin=-1, vmax=1,
+                    cmap=cmap,
+                    vmin=vmin, vmax=vmax,
                     linewidths=0.5,
                     annot_kws={"size": 8})
+
+        g.ax_row_dendrogram.set_visible(False)
+        g.ax_col_dendrogram.set_visible(False)
 
         g.figure.suptitle(f"Spearman rho : mean rank distance — {self.study_id} — {metric_label} | "
                     f"{n_heads} head models | {title_suffix}", fontsize=12, y=1.02)
@@ -407,9 +455,8 @@ class HeadModelComparison:
         chaque tête, pour ce protocole (self.study_id).
 
         Contrairement à compute_scores() qui retourne des valeurs brutes de
-        champ, cette méthode retourne des valeurs déjà normalisées — la
-        morphologie de la tête change la distance scalp-cortex (donc la
-        magnitude globale du champ) indépendamment d'où il se concentre ;
+        champ, cette méthode retourne des valeurs déjà normalisées — le dI/dt change la
+        magnitude globale du champ ;
         stimulation_ratio() retire cet effet d'échelle par tête avant de
         comparer.
 
@@ -474,54 +521,119 @@ class HeadModelComparison:
 
         return rmse_matrix, mae_matrix, n_matrix
 
-    def plot_error_heatmap(self, metric="mean", percentile=95, head_models=None,
-                        figsize=(8, 6), cmap="YlOrRd", mae_tiny_threshold=0.01):
+    def _topn_union_ratio_error(self, ratio_df, n_regions):
+        """
+        Comme _pairwise_ratio_error, mais restreint chaque paire de têtes à
+        l'UNION de leurs top-n régions respectives (par stimulation_ratio),
+        plutôt qu'à toutes les régions communes.
+
+        Miroir de _topn_union_stats (rho/dist), mais pour RMSE/MAE.
+
+        ratio_df  : DataFrame de stimulation_ratio (têtes en lignes, régions
+                    en colonnes), typiquement compute_stimulation_ratios()
+        n_regions : taille du top-n par tête, avant union
+
+        Retourne trois DataFrames alignés (têtes x têtes) :
+        rmse_matrix, mae_matrix, n_matrix (nombre de régions comparées par paire).
+        """
+        heads = ratio_df.index
+        rmse_matrix = pd.DataFrame(index=heads, columns=heads, dtype=float)
+        mae_matrix  = pd.DataFrame(index=heads, columns=heads, dtype=float)
+        n_matrix    = pd.DataFrame(index=heads, columns=heads, dtype=float)
+
+        top_regions = {
+            head_model: set(
+                ratio_df.loc[head_model].dropna().sort_values(ascending=False).index[:n_regions]
+            )
+            for head_model in heads
+        }
+
+        for i in heads:
+            for j in heads:
+                union_regions = top_regions[i] | top_regions[j]
+                common = [
+                    r for r in union_regions
+                    if pd.notna(ratio_df.loc[i, r]) and pd.notna(ratio_df.loc[j, r])
+                ]
+
+                n_matrix.loc[i, j] = len(common)
+
+                if len(common) == 0:
+                    rmse_matrix.loc[i, j] = np.nan
+                    mae_matrix.loc[i, j] = np.nan
+                    continue
+
+                diff = ratio_df.loc[i, common] - ratio_df.loc[j, common]
+
+                rmse_matrix.loc[i, j] = np.sqrt(np.mean(diff ** 2))
+                mae_matrix.loc[i, j]  = np.mean(diff.abs())
+
+        return rmse_matrix, mae_matrix, n_matrix
+
+    def plot_error_heatmap(self, data="ratio", metric="mean", percentile=95, head_models=None,
+                        n_regions=None, figsize=(8, 6), cmap="YlOrRd",
+                        mae_tiny_threshold=0.01):
         """
         Affiche une heatmap (clustermap) du RMSE, du MAE, et de leur ratio
-        entre têtes, pour CE protocole (self.study_id), calculés sur le
-        stimulation_ratio par région (donc déjà normalisé par tête —
-        contrairement à plot_heatmap() qui compare des rangs, ceci compare
-        des écarts de magnitude région par région).
+        entre têtes, pour CE protocole (self.study_id).
 
-        Chaque cellule est annotée "RMSE : MAE : ratio". Le clustering et la
-        couleur restent basés sur RMSE (magnitude) — le ratio est fourni
-        comme contexte additionnel, pas comme signal principal, car il
-        devient instable (bruit) quand RMSE et MAE sont tous deux proches
-        de zéro.
+        data : "ratio" (défaut) → calculé sur stimulation_ratio (région /
+                        référence globale de la même tête). Normalisé, donc
+                        isole les différences de profil régional dues à la
+                        morphologie, indépendamment de l'effet d'échelle
+                        scalp-cortex.
+            "raw"    → calculé sur les valeurs brutes de champ
+                        (compute_scores(), voir metric). PAS normalisé : deux
+                        têtes montreront une erreur qui mélange l'effet
+                        d'échelle (distance scalp-cortex) ET la différence de
+                        profil régional — utile si tu veux voir l'écart brut
+                        tel quel plutôt que le comparer après normalisation.
 
-        Interprétation (identique à CorrelationAnalysis.plot_error_heatmap) :
-        RMSE >= MAE toujours (identité mathématique).
-        - ratio proche de 1        → différences réparties uniformément
-                                        entre régions.
-        - ratio nettement > 1      → une ou quelques régions dominent
-                                        l'écart entre têtes, à inspecter
-                                        individuellement.
-        - RMSE < MAE               → ne devrait jamais arriver, signale un bug.
+        metric : - si data="ratio" : passé à compute_stimulation_ratios() comme
+                    metrique de référence ('mean', 'median', 'percentile')
+                - si data="raw"   : passé à compute_scores() comme métrique de
+                    score ('mean', 'median', 'percentile')
 
-        Important : RMSE et MAE ne disent RIEN sur le ranking (voir
-        plot_heatmap() pour ça). Deux têtes peuvent avoir un ranking
-        identique (rho=1, voir plot_heatmap) et un RMSE élevé si le profil
-        relatif se décale uniformément d'une tête à l'autre — les deux
-        heatmaps répondent à des questions différentes et se lisent ensemble.
+        n_regions : None (défaut) → comparaison sur toutes les régions
+                    communes aux deux têtes (comportement global).
+                    int → comparaison, pour chaque PAIRE de têtes, sur
+                    l'union de leurs top-n régions respectives (par la
+                    métrique choisie via `data`). Le N comparé est alors
+                    ajouté à l'annotation, car il varie selon la paire.
 
-        metric, percentile   : passés à compute_stimulation_ratios()
-        head_models           : liste de head_model à inclure — None → toutes
-                                les têtes chargées
-        mae_tiny_threshold    : si MAE < ce seuil, le ratio est affiché avec
-                                1 seule décimale plutôt que 2, car il devient
-                                peu fiable (bruit numérique) quand les erreurs
-                                sont négligeables.
+        Reste identique à avant sinon — voir version précédente pour le
+        détail de l'interprétation RMSE/MAE/ratio.
         """
-        ratio_df = self.compute_stimulation_ratios(
-            metric=metric, percentile=percentile, head_models=head_models
-        )
+        if data not in ("ratio", "raw"):
+            raise ValueError(f"data '{data}' invalide. Choisir 'ratio' ou 'raw'")
 
-        rmse_matrix, mae_matrix, n_matrix = self._pairwise_ratio_error(ratio_df)
+        if data == "ratio":
+            error_df = self.compute_stimulation_ratios(
+                metric=metric, percentile=percentile, head_models=head_models
+            )
+            data_label = f"stimulation ratio (ref={metric})"
+        else:
+            error_df = self.compute_scores(metric=metric, percentile=percentile, n_regions="all")
+
+            if head_models is not None:
+                missing = set(head_models) - set(error_df.index)
+                if missing:
+                    print(f"Les têtes suivantes n'existent pas parmi celles chargées : {sorted(missing)}")
+                error_df = error_df.loc[error_df.index.intersection(head_models)]
+
+            data_label = f"raw {metric}"
+
+        if n_regions is None:
+            rmse_matrix, mae_matrix, n_matrix = self._pairwise_ratio_error(error_df)
+            show_n = False
+        else:
+            rmse_matrix, mae_matrix, n_matrix = self._topn_union_ratio_error(error_df, n_regions)
+            show_n = True
 
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio_matrix = rmse_matrix / mae_matrix
 
-        def _format_cell(r, m, ratio):
+        def _format_cell(r, m, ratio, n):
             if pd.isna(r) or pd.isna(m):
                 return ""
             if pd.isna(ratio):
@@ -530,13 +642,16 @@ class HeadModelComparison:
                 ratio_str = f"{ratio:.1f}"
             else:
                 ratio_str = f"{ratio:.2f}"
-            return f"{r:.2f} : {m:.2f}\nratio {ratio_str}"
+            cell = f"{r:.2f} : {m:.2f}\nratio {ratio_str}"
+            if show_n:
+                cell += f"\nN={int(n)}"
+            return cell
 
         annot_df = pd.DataFrame(
             {
                 col: [
                     _format_cell(rmse_matrix.loc[idx, col], mae_matrix.loc[idx, col],
-                                ratio_matrix.loc[idx, col])
+                                ratio_matrix.loc[idx, col], n_matrix.loc[idx, col])
                     for idx in rmse_matrix.index
                 ]
                 for col in rmse_matrix.columns
@@ -545,12 +660,9 @@ class HeadModelComparison:
         )
 
         n_heads = len(rmse_matrix)
-        metric_label = f"{metric} (P{percentile})" if metric == "percentile" else metric
+        title_suffix = f"top {n_regions} union per pair" if n_regions is not None else "all regions"
 
-        # RMSE matrix is already a distance matrix (symmetric, zero diagonal) —
-        # build linkage directly from it instead of letting clustermap treat
-        # rows as feature vectors and re-derive a second distance from them.
-        condensed = squareform(rmse_matrix.values, checks=False)
+        condensed = squareform(rmse_matrix.fillna(0).values, checks=False)
         row_linkage = linkage(condensed, method="average")
 
         g = sns.clustermap(
@@ -569,8 +681,8 @@ class HeadModelComparison:
         g.ax_col_dendrogram.set_visible(False)
 
         g.figure.suptitle(
-            f"RMSE : MAE : ratio of stimulation ratio — {self.study_id} — {metric_label} | "
-            f"{n_heads} head models",
+            f"RMSE : MAE : ratio of {data_label} — {self.study_id} | "
+            f"{n_heads} head models | {title_suffix}",
             fontsize=12, y=1.02,
         )
         plt.setp(g.ax_heatmap.get_xticklabels(), rotation=45, ha="right", fontsize=8)
