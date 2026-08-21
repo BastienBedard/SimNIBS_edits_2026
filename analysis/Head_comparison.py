@@ -46,16 +46,14 @@ class HeadModelComparison:
     protocole, plusieurs têtes.
     """
 
-    def __init__(self, study_id, head_models=None, HO_atlas=False):
+    def __init__(self, study_id, head_models=None):
         """
         study_id    : identifiant du protocole à comparer entre les têtes
         head_models : liste de clés de HEAD_MODELS à comparer
                       None → toutes les têtes disponibles dans HEAD_MODELS
-        HO_atlas    : passé tel quel à ProtocoleAnalysis
         """
         self.study_id    = study_id
         self.head_models = list(head_models) if head_models is not None else list(HEAD_MODELS)
-        self.HO_atlas    = HO_atlas
 
         # {head_model: objet ProtocoleAnalysis}
         self.protocols = {}
@@ -72,7 +70,7 @@ class HeadModelComparison:
             print(f"  Chargement -{i}/{len(self.head_models)}- {self.study_id} ({head_model})")
             try:
                 self.protocols[head_model] = ProtocoleAnalysis(
-                    study_id=self.study_id, HO_atlas=self.HO_atlas,
+                    study_id=self.study_id,
                     head_model=head_model
                 )
             except Exception as e:

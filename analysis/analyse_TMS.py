@@ -5,7 +5,6 @@ import nibabel as nib
 import json
 from nibabel.affines import apply_affine
 from simnibs import mni2subject_coords, subject2mni_coords
-from nilearn import datasets
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -80,16 +79,14 @@ class ProtocoleAnalysis:
     with open(ATLAS_LABELS_PATH, "r") as f:
         ATLAS_LABELS = {int(k): v for k, v in json.load(f).items()}
 
-    def __init__(self, study_id, tissue_tags=None, HO_atlas=False,
-                 head_model="ernie"):
+    def __init__(self, study_id, tissue_tags=None, head_model="ernie"):
         """
+        study_id     : nom de l'étude dont on désire analyser le protocole.
+        tissue_tags  : Liste des tissues anatomiques à considérer.
         head_model   : clé de HEAD_MODELS ("ernie", "smoker_m", "smoker_f").
-        subject_path : surcharge manuelle du dossier m2m (prioritaire sur head_model)
-        results_dir  : surcharge manuelle du dossier de résultats (prioritaire sur head_model)
         """
         self.study_id      = study_id
         self.tissue_tags   = tissue_tags if tissue_tags is not None else [1, 2]  # WM + GM par défaut
-        self.HO_atlas      = HO_atlas   # Harvard-Oxford atlas
         self.head_model    = head_model
 
         if head_model not in HEAD_MODELS:
@@ -131,14 +128,8 @@ class ProtocoleAnalysis:
             self.msh = mesh_io.read_msh(msh_file)
 
     def _load_atlas(self):
-        """Charge l'atlas .nii et prépare la matrice affine."""
-        if self.HO_atlas:
-            atlas_cortical = datasets.fetch_atlas_harvard_oxford('cortl-maxprob-thr25-1mm')
-
-            self.ATLAS_LABELS = {int(k): v for k, v in enumerate(atlas_cortical.labels)}
-            self.atlas = atlas_cortical.maps
-        else:
-            self.atlas = nib.load(ATLAS_PATH)
+        """Charge l'atlas .nii."""
+        self.atlas = nib.load(ATLAS_PATH)
 
     def _msh_in_tissue(self):
         """

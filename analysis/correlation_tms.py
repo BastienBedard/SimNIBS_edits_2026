@@ -65,11 +65,10 @@ class CorrelationAnalysis:
     Charge les protocoles via ProtocoleAnalysis et compare leurs scores par région.
     """
 
-    def __init__(self, study_ids=None, HO_atlas=False, head_model="ernie"):
+    def __init__(self, study_ids=None, head_model="ernie"):
         """
         study_ids : liste de study_id à charger
                     None → prend tous les dossiers dans RESULTS_DIR
-        HO_atlas  : passé tel quel à ProtocoleAnalysis
         head_model   : clé de HEAD_MODELS ("ernie", "smoker_m", "smoker_f").
         """
         self.head_model = head_model
@@ -81,7 +80,6 @@ class CorrelationAnalysis:
             ]
             print(f"  {len(study_ids)} protocoles trouvés automatiquement")
 
-        self.HO_atlas  = HO_atlas
         self.study_ids = study_ids
 
         # {study_id: objet ProtocoleAnalysis}
@@ -99,7 +97,7 @@ class CorrelationAnalysis:
             print(f"  Chargement -{i}/{len(self.study_ids)}- {study_id}")
             try:
                 self.protocols[study_id] = ProtocoleAnalysis(
-                    study_id=study_id, HO_atlas=self.HO_atlas,
+                    study_id=study_id,
                     head_model=self.head_model
                 )
             except Exception as e:
