@@ -6,10 +6,10 @@ from pathlib import Path
 # Racine du projet
 PROJECT_ROOT = Path(__file__).parent.parent
 
-SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie"#"Smoker_patient_M" / "m2m_smoker_men"
+SUBJECT_PATH = PROJECT_ROOT / "data" / "Smoker_patient_M" / "m2m_smoker_men"#"ernie" / "m2m_ernie"#
 COIL_DIR     = Path(sim_struct.__file__).parent.parent / "resources" / "coil_models"
-JSON_PATH    = PROJECT_ROOT / "data" / "unique_setup.json"
-RESULTS_DIR  = PROJECT_ROOT / "results" / "results_tms_coils_setups"
+JSON_PATH    = PROJECT_ROOT / "data" / "protocoles_finals.json"
+RESULTS_DIR  = PROJECT_ROOT / "results" / "TMS_MA_smoker_m"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 coil_data = {

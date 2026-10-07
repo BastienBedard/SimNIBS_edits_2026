@@ -25,7 +25,7 @@ ATLAS_LABELS_PATH = PROJECT_ROOT / "utils" / "atlas_labels_HO_AAL3_139.json"
 HEAD_MODELS = {
     "ernie": {
         "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie",
-        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_2",
+        "results_dir":  PROJECT_ROOT / "results" / "TMS_MA_ernie",
     },
     "ernie_big": {
             "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_erniebig",
@@ -33,7 +33,7 @@ HEAD_MODELS = {
         },
     "ernie_new": {
                 "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_new",
-                "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_new",
+                "results_dir":  PROJECT_ROOT / "results" / "TMS_MA_ernie_new",
             },
     "ernie_new_2": {
                 "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_new_2",
@@ -57,11 +57,11 @@ HEAD_MODELS = {
         },
     "smoker_m": {
         "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_M" / "m2m_smoker_men",
-        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_smoker_M",
+        "results_dir":  PROJECT_ROOT / "results" / "TMS_MA_smoker_m",
     },
     "smoker_f": {
         "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_F" / "m2m_smoker_women",
-        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_smoker_F",
+        "results_dir":  PROJECT_ROOT / "results" / "TMS_MA_smoker_f",
     },
 }
 
@@ -530,16 +530,27 @@ class ProtocoleAnalysis:
         return sorted_regions if n == "all" else sorted_regions[:n]
 
     def plot_region_distribution(self, kind="violin", n_regions=None, use_names=None,
-                                  ascending=False, max_points_per_region=20000,
-                                  percentile=95, figsize=(14, 10), color="lightsteelblue",
-                                  show_global_mean=True, show_global_percentile=True,
-                                  show_markers=True, show_outliers=False, random_state=0):
+                                ascending=False, max_points_per_region=20000,
+                                percentile=95, figsize=(14, 10), color="lightsteelblue",
+                                show_global_mean=True, show_global_percentile=True,
+                                show_markers=True, show_outliers=False, random_state=0):
         """
         Affiche, pour CE protocole, la distribution du champ magnE par
         tétraèdre au sein de chaque région (box ou violin plot seaborn),
         pondérée par le volume des tétraèdres, avec les repères de moyenne
         et P(percentile) pondérés superposés (même style que
         CorrelationAnalysis.plot_region_distribution).
+
+        Les valeurs de moyenne et de P(percentile) affichées (marqueurs,
+        tri, ordre des régions) viennent DIRECTEMENT de mean_by_region() et
+        weighted_percentile_by_region() — les mêmes méthodes utilisées par
+        rank_regions() — plutôt que d'être recalculées ici.
+
+        n_regions sélectionne maintenant le top-N par MOYENNE pondérée
+        (comme rank_regions(metric="mean")) — et non plus par nombre de
+        tétraèdres — pour que les deux méthodes retournent toujours le même
+        ensemble de régions pour un même n. ascending=False par défaut,
+        aligné sur rank_regions().
 
         Pondération : seaborn box/violin n'acceptent pas de poids par
         point — pour respecter quand même la pondération par volume sans
@@ -551,39 +562,36 @@ class ProtocoleAnalysis:
         indépendamment du nombre réel de tétraèdres dans le maillage.
 
         C'est une approximation Monte-Carlo (un peu de bruit d'échantillonnage
-        sur la forme de la boîte/violon) — contrairement à la version
-        précédente (bxp/gaussian_kde) qui était exacte. Pour compenser, les
-        marqueurs de moyenne/P(percentile) affichés sont calculés
-        directement sur les données pondérées complètes (via
-        np.average/_weighted_percentile), pas sur le ré-échantillon : ils
-        restent exacts même si la forme de la boîte/violon est approximative.
-        Augmenter max_points_per_region réduit le bruit au prix du temps de
-        calcul/mémoire.
+        sur la forme de la boîte/violon) — les marqueurs de moyenne/P(percentile)
+        affichés restent exacts puisqu'ils viennent de mean_by_region() /
+        weighted_percentile_by_region(), pas du ré-échantillon.
 
         kind        : "box" ou "violin" (seaborn)
         n_regions   : None/"all" → toutes les régions
-                      int → garde les n régions avec le plus de tétraèdres
+                    int → garde les n régions avec la moyenne pondérée la
+                    plus élevée (même sélection que rank_regions(metric="mean"))
         use_names   : None (défaut) → auto, comme histogram_metric() : noms
-                      anatomiques si moins de 50 régions affichées, sinon
-                      numéros d'atlas (pour rester lisible)
-                      True/False → force noms / numéros, quel que soit n_regions
-        ascending   : True (défaut) → régions triées par moyenne pondérée croissante
-                      False → décroissante
+                    anatomiques si moins de 50 régions affichées, sinon
+                    numéros d'atlas (pour rester lisible)
+                    True/False → force noms / numéros, quel que soit n_regions
+        ascending   : False (défaut) → plus stimulées en premier, aligné sur
+                    rank_regions()
+                    True  → moins stimulées en premier
         max_points_per_region : taille du ré-échantillon pondéré par région
         percentile  : percentile affiché en marqueur/ligne (défaut 95)
         show_global_mean : superpose la moyenne globale pondérée du protocole
-                      (ligne noire pointillée, même couleur que les losanges
-                      de moyenne par région)
+                    (ligne noire pointillée, même couleur que les losanges
+                    de moyenne par région)
         show_global_percentile : superpose le P(percentile) global pondéré du
-                      protocole (ligne rouge pointillée, même couleur que les
-                      triangles de P(percentile) par région) — désactivé par
-                      défaut
+                    protocole (ligne rouge pointillée, même couleur que les
+                    triangles de P(percentile) par région) — désactivé par
+                    défaut
         show_markers : superpose la moyenne et le P(percentile) pondérés de
-                      chaque région (losange noir / triangle rouge)
+                    chaque région (losange noir / triangle rouge)
         show_outliers : (kind="box" uniquement) affiche les points aberrants
-                      (fliers) au-delà des moustaches. False les masque —
-                      utile visuellement avec beaucoup de régions/points.
-                      Sans effet sur kind="violin".
+                    (fliers) au-delà des moustaches. False les masque —
+                    utile visuellement avec beaucoup de régions/points.
+                    Sans effet sur kind="violin".
 
         Retourne la liste des region_id affichées, dans l'ordre du plot.
         """
@@ -594,17 +602,22 @@ class ProtocoleAnalysis:
         E = self.magnE
         vols = self.vols
 
-        regions = [r for r in np.unique(labels) if r != 0]
+        # source unique de vérité pour la moyenne et le P(percentile) par
+        # région — les mêmes méthodes utilisées par rank_regions()
+        region_means_all = self.mean_by_region()
+        region_pct_all    = self.weighted_percentile_by_region(percentile)
 
-        if n_regions not in (None, "all"):
-            counts = {r: int(np.sum(labels == r)) for r in regions}
-            regions = sorted(regions, key=lambda r: counts[r], reverse=True)[:n_regions]
+        if n_regions in (None, "all"):
+            regions = list(region_means_all.keys())
+        else:
+            # top-n par moyenne pondérée, même sélection que
+            # rank_regions(metric="mean") — indépendant de ascending, qui ne
+            # contrôle que l'ordre d'affichage, pas quelles régions sont gardées
+            regions = sorted(region_means_all, key=lambda r: region_means_all[r],
+                            reverse=True)[:n_regions]
 
-        # stats exactes (pondérées), calculées sur les données complètes —
-        # utilisées à la fois pour l'ordre et pour les marqueurs
-        region_means = {r: np.average(E[labels == r], weights=vols[labels == r]) for r in regions}
-        region_pct   = {r: self._weighted_percentile(E[labels == r], vols[labels == r], percentile)
-                         for r in regions}
+        region_means = {r: region_means_all[r] for r in regions}
+        region_pct   = {r: region_pct_all[r] for r in regions}
 
         regions = sorted(regions, key=lambda r: region_means[r], reverse=not ascending)
 
@@ -642,19 +655,19 @@ class ProtocoleAnalysis:
         if show_markers:
             for i, r in enumerate(regions):
                 ax.scatter(i, region_means[r], color="black", marker="D", s=50,
-                           zorder=5, label="Weighted mean" if i == 0 else None)
+                        zorder=5, label="Weighted mean" if i == 0 else None)
                 ax.scatter(i, region_pct[r], color="crimson", marker="^", s=60,
-                           zorder=5, label=f"Weighted P{percentile}" if i == 0 else None)
+                        zorder=5, label=f"Weighted P{percentile}" if i == 0 else None)
 
         if show_global_mean:
             global_mean = self.global_reference(metric="mean")
             ax.axhline(global_mean, color="black", linestyle="--",
-                       linewidth=1.5, label=f"Global mean ({global_mean:.4f})")
+                    linewidth=1.5, label=f"Global mean ({global_mean:.4f})")
 
         if show_global_percentile:
             global_pct = self.global_reference(metric="percentile", percentile=percentile)
             ax.axhline(global_pct, color="crimson", linestyle="--",
-                       linewidth=1.5, label=f"Global P{percentile} ({global_pct:.4f})")
+                    linewidth=1.5, label=f"Global P{percentile} ({global_pct:.4f})")
 
         if show_markers or show_global_mean or show_global_percentile:
             ax.legend()

@@ -8,54 +8,11 @@ from matplotlib.colors import ListedColormap
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import linkage
 from scipy.stats import spearmanr
-from analyse_TMS import ProtocoleAnalysis
+from analyse_TMS import ProtocoleAnalysis, HEAD_MODELS
 
 # ─── CHEMINS ─────────────────────────────────────────────────────────────────
 
 PROJECT_ROOT = Path(__file__).parent.parent
-
-HEAD_MODELS = {
-    "ernie": {
-        "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie",
-        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_2",
-    },
-    "ernie_big": {
-            "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_erniebig",
-            "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_big",
-        },
-    "ernie_new": {
-                "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_new",
-                "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_new",
-            },
-    "ernie_new_2": {
-                "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_new_2",
-                "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_new_2",
-            },
-    "ernie_small": {
-                "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_small",
-                "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_small",
-            },
-    "coils_setups": {
-            "subject_path": PROJECT_ROOT / "data" / "ernie" / "m2m_ernie",
-            "results_dir":  PROJECT_ROOT / "results" / "results_tms_coils_setups",
-        },
-    "coils_setups_M": {
-            "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_M" / "m2m_smoker_men",
-            "results_dir":  PROJECT_ROOT / "results" / "results_tms_coils_setups_M",
-        },
-    "coils_setups_F": {
-            "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_F" / "m2m_smoker_women",
-            "results_dir":  PROJECT_ROOT / "results" / "results_tms_coils_setups_F",
-        },
-    "smoker_m": {
-        "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_M" / "m2m_smoker_men",
-        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_smoker_M",
-    },
-    "smoker_f": {
-        "subject_path": PROJECT_ROOT / "data" / "Smoker_patient_F" / "m2m_smoker_women",
-        "results_dir":  PROJECT_ROOT / "results" / "results_tms_MA_smoker_F",
-    },
-}
 
 # ─── CLASSE ──────────────────────────────────────────────────────────────────
 
@@ -953,7 +910,7 @@ class CorrelationAnalysis:
                 n=n_top_regions, metric=top_regions_metric, percentile=top_regions_percentile
             )
             for i, (region_id, value) in enumerate(top_regions, start=1):
-                row[f"top{i}_region_number"] = int(region_id)
+                # row[f"top{i}_region_number"] = int(region_id)
                 row[f"top{i}_region_name"] = p.ATLAS_LABELS.get(int(region_id), "unknown")
                 row[f"top{i}_region_value_{value_col_suffix}"] = value
 
