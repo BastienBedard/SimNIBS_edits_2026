@@ -2,17 +2,11 @@ from simnibs import sim_struct, run_simnibs
 from pathlib import Path
 import shutil
 
-
-#This script will run a tDCS simulation for every m2m folder found in the base_folder.
-#You can customize the electrode positions, sizes, 
-# and currents as well as the tissue conductivities
-#You can also customize if the simulation output will contain E, J or V.
-
 # ------------------------------------------------------------
 # Folder containing all m2m folders
 # ------------------------------------------------------------
 
-base_folder = Path("/Users/noahholm/Desktop/m2m_folders")
+base_folder = Path("/Users/noahholm/Desktop/m2m_spheres")
 
 # Automatically find every folder whose name starts with m2m_
 m2m_folders = sorted([
@@ -25,7 +19,7 @@ m2m_folders = sorted([
 output_parent = Path("/Users/noahholm/Desktop/simsfolders")
 
 # Folder where only the final simulation result .msh files will be copied
-simulation_result_folder = Path("/Users/noahholm/Desktop/simnibs_compare")
+simulation_result_folder = Path("/Users/noahholm/Desktop/simnibs_compare_spheres")
 
 simulation_result_folder.mkdir(parents=True, exist_ok=True)
 
@@ -86,13 +80,6 @@ def run_tdcs_simulation(m2m_folder):
     tdcs = S.add_tdcslist()
     tdcs.currents = [0.001, -0.001]
 
-    #tdcs.cond[50].name = "metal_rod"
-    #tdcs.cond[50].value = 1000000.0  # S/m
-
-    tdcs.cond[4].value = 1.0  # S/m
-    #[4] for example modifies scalp because of python 
-    # indexing starting at 0, so 5th element is index 4.
-
     # Tissue tags:
     # 1 = White-Matter
     # 2 = Gray-Matter
@@ -128,22 +115,6 @@ def run_tdcs_simulation(m2m_folder):
     e2.shape = "rect"
     e2.dimensions = [50, 50]          # mm
     e2.thickness = 4                  # mm
-
-    # Electrode 3: Oz
-    # e3 = tdcs.add_electrode()
-    # e3.channelnr = 3
-    # e3.centre = "Oz"
-    # e3.shape = "rect"
-    # e3.dimensions = [50, 50]          # mm
-    # e3.thickness = 4                  # mm
-
-    # Electrode 4: TP10
-    # e4 = tdcs.add_electrode()
-    # e4.channelnr = 4
-    # e4.centre = "TP10"
-    # e4.shape = "rect"
-    # e4.dimensions = [50, 50]          # mm
-    # e4.thickness = 4                  # mm
 
     run_simnibs(S)
 

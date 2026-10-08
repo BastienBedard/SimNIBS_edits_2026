@@ -1,9 +1,10 @@
+#overlaygraphs1
 import csv
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-#This script is used to overlay multiple meshcompare convergence graphs into one graph.
+#This script is used to overlay multiple graphs into one graph.
 
 # ------------------------------------------------------------
 # Folder containing saved graph data

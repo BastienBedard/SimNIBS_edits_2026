@@ -5,14 +5,20 @@ from simnibs import mesh_io
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
+
 # ── Atlas ─────────────────────────────────────────────────────────────────────
-atlas_path = Path(__file__).parent.parent / "utils" / "atlas.nii"
+atlas_path = Path(__file__).parent.parent / "utils" / "atlas_HO_thr25_1mm.nii"
 
 atlas = nib.load(atlas_path)
 
 print("Atlas shape   :", atlas.shape)
 print("Atlas zooms   :", atlas.header.get_zooms())
 print("Atlas affine  :\n", atlas.affine)
+
+data = atlas.get_fdata()
+labels_uniques = np.unique(data)
+print(labels_uniques)
+print(f"Nombre de régions (hors fond) : {len(labels_uniques) - 1}")
 
 # coins du volume atlas en mm
 corners_vox = np.array([
@@ -68,3 +74,5 @@ def afficher_tranche(volume, axe="z", index=None):
 # Exemple d'utilisation :
 data = atlas.get_fdata()
 afficher_tranche(data, axe="z", index=108)
+
+
