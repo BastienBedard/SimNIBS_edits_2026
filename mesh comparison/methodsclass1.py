@@ -1,3 +1,4 @@
+#methodsclass1
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -15,9 +16,9 @@ from simnibs import mesh_io
 # "knn" = distance-weighted k-nearest tetrahedron centers
 # # "containing_tetrahedron" = find the comparison-mesh tetrahedron around
 # each reference center and estimate E at that location using barycentric coordinates
-COMPARISON_METHOD = "nearest_neighbor"
+COMPARISON_METHOD = "knn"
 
-MESHCOMPARE_FOLDER = Path.home() / "Desktop" / "simnibs_compare"
+MESHCOMPARE_FOLDER = Path.home() / "Desktop" / "simnibs_compare_spheres"
 CSV_OUTPUT_FOLDER = Path.home() / "Desktop" / "meshcomparegraphdata"
 
 COMPARE_ONLY_LIST = True
