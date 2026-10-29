@@ -837,54 +837,129 @@ class CorrelationAnalysis:
             figsize=figsize, ylabel=f"P{percentile} field value",
         )
 
+    # def export_summary(self, percentile_low=95, percentile_high=99,
+    #                 threshold_pct=75, threshold_ref_percentile=95,
+    #                 n_top_regions=5, top_regions_metric="mean",
+    #                 top_regions_percentile=95,
+    #                 study_ids=None, output_path=None,
+    #                 decimals=3, figsize=None, fontsize=9,
+    #                 header_color="#40466e", row_colors=("#f1f1f2", "white")):
+    #     """
+    #     Exporte un résumé par protocole (mean, P95, P99, volume au-dessus du
+    #     seuil, top régions) dans un DataFrame, sauvegardé en CSV si output_path
+    #     est fourni, et TOUJOURS affiché sous forme de tableau matplotlib
+    #     (sauvegardable via l'icône de Jupyter). Pensé pour être partagé avec
+    #     une collègue (Excel / R).
+
+    #     percentile_low, percentile_high : les deux percentiles rapportés
+    #                     (défaut 95 et 99)
+    #     threshold_pct, threshold_ref_percentile : le volume rapporté est le %
+    #                     de volume au-dessus de threshold_pct% du P(threshold_ref_percentile)
+    #                     global (défaut : 75% du P95 global)
+    #     n_top_regions : nombre de régions les mieux classées à inclure (défaut 5)
+    #     top_regions_metric : métrique utilisée pour classer les régions —
+    #                     'mean', 'median', ou 'percentile'
+    #     top_regions_percentile : percentile utilisé si top_regions_metric='percentile'
+    #                     (défaut 95, ignoré sinon)
+    #     study_ids     : liste de study_id à inclure — None → tous
+    #     output_path   : chemin du fichier CSV à écrire — None → pas d'écriture,
+    #                     seulement le DataFrame retourné (le tableau est quand
+    #                     même affiché dans les deux cas)
+    #     decimals, figsize, fontsize, header_color, row_colors : voir _plot_summary_table()
+
+    #     Retourne un DataFrame (une ligne par protocole).
+    #     """
+    #     if top_regions_metric not in ("mean", "median", "percentile"):
+    #         raise ValueError(
+    #             f"top_regions_metric '{top_regions_metric}' invalide. "
+    #             f"Choisir 'mean', 'median', ou 'percentile'"
+    #         )
+
+    #     protocols = (
+    #         self.protocols if study_ids is None
+    #         else {sid: self.protocols[sid] for sid in study_ids if sid in self.protocols}
+    #     )
+
+    #     # suffixe de colonne pour identifier la métrique utilisée pour le top region
+    #     value_col_suffix = (
+    #         f"P{top_regions_percentile}"
+    #         if top_regions_metric == "percentile"
+    #         else top_regions_metric
+    #     )
+
+    #     records = []
+    #     for study_id, p in protocols.items():
+    #         mean_val = p.global_reference(metric="mean")
+    #         p_low  = p.global_reference(metric="percentile", percentile=percentile_low)
+    #         p_high = p.global_reference(metric="percentile", percentile=percentile_high)
+    #         vol_above = p.global_fraction_above_threshold(
+    #             threshold_pct=threshold_pct, metric="percentile",
+    #             percentile=threshold_ref_percentile
+    #         )
+
+    #         row = {
+    #             "study_id": study_id,
+    #             "head_model": self.head_model,
+    #             "mean": mean_val,
+    #             f"P{percentile_low}": p_low,
+    #             f"P{percentile_high}": p_high,
+    #             f"volume_pct_above_{threshold_pct}pct_of_P{threshold_ref_percentile}": vol_above,
+    #         }
+
+    #         top_regions = p.rank_regions(
+    #             n=n_top_regions, metric=top_regions_metric, percentile=top_regions_percentile
+    #         )
+    #         for i, (region_id, value) in enumerate(top_regions, start=1):
+    #             # row[f"top{i}_region_number"] = int(region_id)
+    #             row[f"top{i}_region_name"] = p.ATLAS_LABELS.get(int(region_id), "unknown")
+    #             row[f"top{i}_region_value_{value_col_suffix}"] = value
+
+    #         records.append(row)
+
+    #     df = pd.DataFrame(records)
+
+    #     if output_path is not None:
+    #         df.to_csv(output_path, index=False)
+    #         print(f"  Résumé sauvegardé : {output_path} ({len(df)} protocoles)")
+
+    #     self._plot_summary_table(df, decimals=decimals, figsize=figsize, fontsize=fontsize,
+    #                             header_color=header_color, row_colors=row_colors)
+
+    #     return df
+
     def export_summary(self, percentile_low=95, percentile_high=99,
-                    threshold_pct=75, threshold_ref_percentile=95,
-                    n_top_regions=5, top_regions_metric="mean",
-                    top_regions_percentile=95,
-                    study_ids=None, output_path=None,
-                    decimals=3, figsize=None, fontsize=9,
-                    header_color="#40466e", row_colors=("#f1f1f2", "white")):
+                threshold_pct=75, threshold_ref_percentile=95,
+                study_ids=None, output_path=None,
+                decimals=3, figsize=None, fontsize=9,
+                header_color="#40466e", row_colors=("#f1f1f2", "white")):
         """
         Exporte un résumé par protocole (mean, P95, P99, volume au-dessus du
-        seuil, top régions) dans un DataFrame, sauvegardé en CSV si output_path
-        est fourni, et TOUJOURS affiché sous forme de tableau matplotlib
-        (sauvegardable via l'icône de Jupyter). Pensé pour être partagé avec
-        une collègue (Excel / R).
+        seuil, région la plus stimulée selon P99 et selon la moyenne) dans un
+        DataFrame, sauvegardé en CSV si output_path est fourni, et TOUJOURS
+        affiché sous forme de tableau matplotlib (sauvegardable via l'icône
+        de Jupyter). Pensé pour être partagé avec une collègue (Excel / R).
 
         percentile_low, percentile_high : les deux percentiles rapportés
-                        (défaut 95 et 99)
+                        (défaut 95 et 99). percentile_high est aussi le
+                        percentile utilisé pour la région top 1 "P99".
         threshold_pct, threshold_ref_percentile : le volume rapporté est le %
                         de volume au-dessus de threshold_pct% du P(threshold_ref_percentile)
                         global (défaut : 75% du P95 global)
-        n_top_regions : nombre de régions les mieux classées à inclure (défaut 5)
-        top_regions_metric : métrique utilisée pour classer les régions —
-                        'mean', 'median', ou 'percentile'
-        top_regions_percentile : percentile utilisé si top_regions_metric='percentile'
-                        (défaut 95, ignoré sinon)
         study_ids     : liste de study_id à inclure — None → tous
         output_path   : chemin du fichier CSV à écrire — None → pas d'écriture,
                         seulement le DataFrame retourné (le tableau est quand
                         même affiché dans les deux cas)
         decimals, figsize, fontsize, header_color, row_colors : voir _plot_summary_table()
 
+        Colonnes de régions (4 au total) :
+        - top1_P{percentile_high}_region_name / _value : région #1 selon P(percentile_high)
+        - top1_mean_region_name / _value               : région #1 selon la moyenne
+
         Retourne un DataFrame (une ligne par protocole).
         """
-        if top_regions_metric not in ("mean", "median", "percentile"):
-            raise ValueError(
-                f"top_regions_metric '{top_regions_metric}' invalide. "
-                f"Choisir 'mean', 'median', ou 'percentile'"
-            )
-
         protocols = (
             self.protocols if study_ids is None
             else {sid: self.protocols[sid] for sid in study_ids if sid in self.protocols}
-        )
-
-        # suffixe de colonne pour identifier la métrique utilisée pour le top region
-        value_col_suffix = (
-            f"P{top_regions_percentile}"
-            if top_regions_metric == "percentile"
-            else top_regions_metric
         )
 
         records = []
@@ -906,13 +981,13 @@ class CorrelationAnalysis:
                 f"volume_pct_above_{threshold_pct}pct_of_P{threshold_ref_percentile}": vol_above,
             }
 
-            top_regions = p.rank_regions(
-                n=n_top_regions, metric=top_regions_metric, percentile=top_regions_percentile
-            )
-            for i, (region_id, value) in enumerate(top_regions, start=1):
-                # row[f"top{i}_region_number"] = int(region_id)
-                row[f"top{i}_region_name"] = p.ATLAS_LABELS.get(int(region_id), "unknown")
-                row[f"top{i}_region_value_{value_col_suffix}"] = value
+            # top 1 selon P(percentile_high), puis top 1 selon la moyenne
+            for label, metric in ((f"P{percentile_high}", "percentile"), ("mean", "mean")):
+                region_id, value = p.rank_regions(
+                    n=1, metric=metric, percentile=percentile_high
+                )[0]
+                row[f"top1_{label}_region_name"] = p.ATLAS_LABELS.get(int(region_id), "unknown")
+                row[f"top1_{label}_region_value"] = value
 
             records.append(row)
 
