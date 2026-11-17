@@ -21,7 +21,7 @@ from simnibs.mesh_tools import mesh_io
 # Model type
 # ------------------------------------------------------------
 
-MODEL_TYPE = "head"     # "head" or "sphere"
+MODEL_TYPE = "sphere"     # "head" or "sphere"
 
 # ------------------------------------------------------------
 # Paths
@@ -30,7 +30,7 @@ MODEL_TYPE = "head"     # "head" or "sphere"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Head models: folder containing the m2m_* folders (one per head mesh)
-HEAD_MESHES = PROJECT_ROOT / "data" / "ernie"
+HEAD_MESHES = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_uni"
 HEAD_RESULTS_FOLDER = PROJECT_ROOT / "results" / "results_multisized_mesh"
 
 # Sphere models: folder containing the standalone sphere .msh files
@@ -53,8 +53,7 @@ M2M_FOLDER_NAMES = [
 
 # .msh files inside SPHERE_MESHES (used when MODEL_TYPE == "sphere")
 SPHERE_MESH_NAMES = [
-    # "sphere_1.msh",
-    # "sphere_2.msh",
+     "m2m_sphere",
 ]
 
 # ------------------------------------------------------------
