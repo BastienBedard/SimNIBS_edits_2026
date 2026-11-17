@@ -8,16 +8,22 @@ results/Figures_correlation/
 
 # Données subjects (trop lourds)
 data/ernie/m2m_*/
-data/ernie/*.ini
+# data/ernie/*.ini
+
+data/sphere/m2m_*/
+# data/ernie/*.ini
 
 data/Smoker_patient_F/m2m_*/
-data/Smoker_patient_F/*.ini
+# data/Smoker_patient_F/*.ini
 
 data/Smoker_patient_M/m2m_*/
-data/Smoker_patient_M/*.ini
+# data/Smoker_patient_M/*.ini
 
 # paramètre perso
 data/ernie/simulations_param
+data/Smoker_patient_F/simulations_param
+data/Smoker_patient_M/simulations_param
+data/sphere/simulations_param
 
 
 # Environnement Python

@@ -34,7 +34,7 @@ HEAD_MESHES = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie_uni"
 HEAD_RESULTS_FOLDER = PROJECT_ROOT / "results" / "results_multisized_mesh"
 
 # Sphere models: folder containing the standalone sphere .msh files
-SPHERE_MESHES = PROJECT_ROOT / "data" / "m2m_spheres"
+SPHERE_MESHES = PROJECT_ROOT / "data" / "sphere" / "m2m_sphere"
 SPHERE_RESULTS_FOLDER = PROJECT_ROOT / "results" / "results_multisized_spheres"
 
 # ------------------------------------------------------------
@@ -53,7 +53,7 @@ M2M_FOLDER_NAMES = [
 
 # .msh files inside SPHERE_MESHES (used when MODEL_TYPE == "sphere")
 SPHERE_MESH_NAMES = [
-     "m2m_sphere",
+     "sphere.msh",
 ]
 
 # ------------------------------------------------------------
