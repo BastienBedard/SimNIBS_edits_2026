@@ -1,0 +1,5 @@
+method,field,tetrahedra_kept,relative_error_percent,coverage_percent,coverage_volume_percent,test_file,reference_file,reference_mode,compare_only_list,match_tissue_tags,k_neighbors,distance_power
+knn,E,3114975,12.082135048405139,100.0,100.0,ernie_big_slope_TDCS_1_scalar.msh,ernie_small_slope_TDCS_1_scalar.msh,most_tetrahedra,True,True,8,2.0
+knn,E,6845702,9.76783693549281,100.0,100.0,ernie_mid_slope_TDCS_1_scalar.msh,ernie_small_slope_TDCS_1_scalar.msh,most_tetrahedra,True,True,8,2.0
+knn,E,3114975,11.67509444588752,100.0,100.0,ernie_big_slope_TDCS_1_scalar.msh,ernie_mid_slope_TDCS_1_scalar.msh,next_finer,True,True,8,2.0
+knn,E,6845702,9.76783693549281,100.0,100.0,ernie_mid_slope_TDCS_1_scalar.msh,ernie_small_slope_TDCS_1_scalar.msh,next_finer,True,True,8,2.0

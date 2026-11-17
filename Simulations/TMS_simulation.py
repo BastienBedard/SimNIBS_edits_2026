@@ -6,10 +6,10 @@ from pathlib import Path
 # Racine du projet
 PROJECT_ROOT = Path(__file__).parent.parent
 
-SUBJECT_PATH = PROJECT_ROOT / "data" / "Smoker_patient_M" / "m2m_smoker_men"#"ernie" / "m2m_ernie"#
+SUBJECT_PATH = PROJECT_ROOT / "data" / "ernie" / "m2m_ernie"#"Smoker_patient_F" / "m2m_smoker_women"#
 COIL_DIR     = Path(sim_struct.__file__).parent.parent / "resources" / "coil_models"
 JSON_PATH    = PROJECT_ROOT / "data" / "protocoles_finals.json"
-RESULTS_DIR  = PROJECT_ROOT / "results" / "TMS_MA_smoker_m"
+RESULTS_DIR  = PROJECT_ROOT / "results" / "TMS_MA_ernie"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 coil_data = {
@@ -31,9 +31,16 @@ coil_data = {
     },
     "Brainsway_H4.tcd" : {
         "MT_in_MSO" : 50,
-        "didt_max" : 53.7
+        "didt_max" : 67.5
     }
 }
+
+# ,
+#     "Brainsway_H4.tcd" : {
+#         "MT_in_MSO" : 50,
+#         "didt_max" : 53.7
+#     }
+# }
 
 # ─── CHARGEMENT DU JSON ───────────────────────────────────────────────────────
 with open(JSON_PATH, "r", encoding="utf-8") as f:

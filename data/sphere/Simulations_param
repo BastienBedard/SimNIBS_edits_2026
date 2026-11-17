@@ -1,0 +1,6 @@
+Terminal command:
+
+charm sphere T1.nii.gz --usesettings C:\Users\bedba\Desktop\Maitrise_2026\GitHub_SimNIBS\SimNIBS_edits_2026\data\sphere\charm.ini
+
+sphere param:
+elem_sizes = {"standard": {"range": [2, 2], "slope": 1.0}}

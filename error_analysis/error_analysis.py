@@ -73,6 +73,23 @@ METHODS_NEEDING_MESH = frozenset({"containing_tetrahedron"})
 # Result mesh searched for inside each simulation folder
 RESULT_FILE_PATTERN = "*_scalar.msh"
 
+# Number of tetrahedra (when loading a mesh) or query points (nearest_neighbor
+# and knn mapping) processed at a time. It only sets how large the temporary
+# arrays are, so a smaller value lowers the peak memory use. The results do
+# not depend on it.
+CHUNK_SIZE = 500_000
+
+
+def _chunk_ranges(total, chunk_size):
+    """Yield (start, stop) pairs that cover range(total) in chunks."""
+    chunk_size = int(chunk_size)
+
+    if chunk_size < 1:
+        raise ValueError("chunk_size must be at least 1.")
+
+    for start in range(0, total, chunk_size):
+        yield start, min(start + chunk_size, total)
+
 
 def _check_field_names(names):
     unknown = [name for name in names if name not in FIELD_SOURCES]
@@ -119,6 +136,7 @@ class TetraMeshData:
         used_tags=None,
         fields=("E",),
         remove_mean_potential=True,
+        chunk_size=CHUNK_SIZE,
     ):
         """
         Extract retained tetrahedral geometry and the requested field data.
@@ -126,6 +144,9 @@ class TetraMeshData:
         remove_mean_potential: V is defined up to an arbitrary constant, so
         the volume-weighted mean over the retained tetrahedra is subtracted
         from V of each mesh.
+
+        chunk_size: number of tetrahedra processed at a time. It only limits
+        the size of temporary arrays; the extracted data does not depend on it.
         """
         fields = tuple(fields)
         _check_field_names(fields)
@@ -143,20 +164,42 @@ class TetraMeshData:
 
         tags_tet = tags_tet_all[tissue_mask]
 
+        # Row indices, in the full element arrays, of the retained tetrahedra.
+        # Indexing once with these avoids the intermediate full-size copies
+        # that the two-step selection tet_mask -> tissue_mask makes.
+        retained = np.flatnonzero(tet_mask)[tissue_mask]
+        count = len(retained)
+
         # SimNIBS node and element numbers are 1-based; node indices are 0-based.
-        tet_nodes = (mesh.elm.node_number_list[tet_mask, :4] - 1)[tissue_mask]
-        tet_element_numbers = mesh.elm.elm_number[tet_mask][tissue_mask]
+        # Stored in the smallest integer type that can hold every node index,
+        # and filled chunk by chunk.
+        index_dtype = (
+            np.int32 if mesh.nodes.nr < np.iinfo(np.int32).max else np.int64
+        )
+        tet_nodes = np.empty((count, 4), dtype=index_dtype)
+
+        for start, stop in _chunk_ranges(count, chunk_size):
+            tet_nodes[start:stop] = (
+                mesh.elm.node_number_list[retained[start:stop], :4] - 1
+            )
+
+        tet_element_numbers = mesh.elm.elm_number[retained]
 
         coords = mesh.nodes.node_coord
-        p0 = coords[tet_nodes[:, 0]]
-        p1 = coords[tet_nodes[:, 1]]
-        p2 = coords[tet_nodes[:, 2]]
-        p3 = coords[tet_nodes[:, 3]]
+        centers = np.empty((count, 3), dtype=float)
+        volumes = np.empty(count, dtype=float)
 
-        centers = (p0 + p1 + p2 + p3) / 4.0
-        volumes = np.abs(
-            np.einsum("ij,ij->i", p1 - p0, np.cross(p2 - p0, p3 - p0))
-        ) / 6.0
+        for start, stop in _chunk_ranges(count, chunk_size):
+            nodes = tet_nodes[start:stop]
+            p0 = coords[nodes[:, 0]]
+            p1 = coords[nodes[:, 1]]
+            p2 = coords[nodes[:, 2]]
+            p3 = coords[nodes[:, 3]]
+
+            centers[start:stop] = (p0 + p1 + p2 + p3) / 4.0
+            volumes[start:stop] = np.abs(
+                np.einsum("ij,ij->i", p1 - p0, np.cross(p2 - p0, p3 - p0))
+            ) / 6.0
 
         values = {}
         for name in fields:
@@ -171,12 +214,15 @@ class TetraMeshData:
             data = mesh.field[mesh_name].value
 
             if kind == "element":
-                values[name] = np.asarray(
-                    data[tet_mask, :3][tissue_mask], dtype=float
-                )
+                values[name] = np.asarray(data[retained, :3], dtype=float)
             else:
                 nodal = np.asarray(data, dtype=float).reshape(-1)
-                tet_values = nodal[tet_nodes].mean(axis=1)
+                tet_values = np.empty(count, dtype=float)
+
+                for start, stop in _chunk_ranges(count, chunk_size):
+                    tet_values[start:stop] = nodal[
+                        tet_nodes[start:stop]
+                    ].mean(axis=1)
 
                 if remove_mean_potential:
                     tet_values = tet_values - np.average(
@@ -203,6 +249,7 @@ class TetraMeshData:
         used_tags=None,
         fields=("E",),
         remove_mean_potential=True,
+        chunk_size=CHUNK_SIZE,
     ):
         mesh = mesh_io.read_msh(str(path))
         return cls.from_mesh(
@@ -212,6 +259,7 @@ class TetraMeshData:
             used_tags=used_tags,
             fields=fields,
             remove_mean_potential=remove_mean_potential,
+            chunk_size=chunk_size,
         )
 
 
@@ -274,14 +322,25 @@ class MeshComparisonMapper:
     Every method returns (values_on_reference, valid_reference).
     """
 
-    def __init__(self, k=8, distance_power=2, match_tissue_tags=True, verbose=True):
+    def __init__(
+        self,
+        k=8,
+        distance_power=2,
+        match_tissue_tags=True,
+        verbose=True,
+        chunk_size=CHUNK_SIZE,
+    ):
         self.k = int(k)
         self.distance_power = float(distance_power)
         self.match_tissue_tags = bool(match_tissue_tags)
         self.verbose = bool(verbose)
+        self.chunk_size = int(chunk_size)
 
         if self.k < 1:
             raise ValueError("k must be at least 1.")
+
+        if self.chunk_size < 1:
+            raise ValueError("chunk_size must be at least 1.")
 
         if self.distance_power < 0:
             raise ValueError("distance_power must be non-negative.")
@@ -334,18 +393,37 @@ class MeshComparisonMapper:
     def _interpolate_from_neighbors(
         self, query_centers, test_centers, test_values, k, distance_power
     ):
-        """Distance-weighted values at query_centers from the k nearest test centers."""
+        """
+        Distance-weighted values at query_centers from the k nearest test centers.
+
+        The tree is built once and the query points are processed in chunks of
+        self.chunk_size, so the temporary (points x neighbors) arrays stay
+        small. Each point is handled independently, so the result does not
+        depend on the chunk size.
+        """
         k_effective = min(k, len(test_centers))
         tree = cKDTree(test_centers)
-        distances, indices = tree.query(query_centers, k=k_effective)
 
-        if k_effective == 1:
-            distances = distances[:, np.newaxis]
-            indices = indices[:, np.newaxis]
+        result = np.empty(
+            (len(query_centers), test_values.shape[1]), dtype=float
+        )
 
-        weights = self._inverse_distance_weights(distances, distance_power)
+        for start, stop in _chunk_ranges(len(query_centers), self.chunk_size):
+            distances, indices = tree.query(
+                query_centers[start:stop], k=k_effective
+            )
 
-        return np.sum(weights[:, :, np.newaxis] * test_values[indices], axis=1)
+            if k_effective == 1:
+                distances = distances[:, np.newaxis]
+                indices = indices[:, np.newaxis]
+
+            weights = self._inverse_distance_weights(distances, distance_power)
+
+            result[start:stop] = np.sum(
+                weights[:, :, np.newaxis] * test_values[indices], axis=1
+            )
+
+        return result
 
     def _center_based_mapping(self, reference, test, k, distance_power, field):
         """Shared implementation for nearest-neighbor and KNN mapping."""
@@ -663,6 +741,9 @@ class MeshConvergenceComparison:
     csv_output_folder  Where save_csv() writes (only needed for saving).
     fields             Fields extracted when the meshes are loaded, any of
                        "E", "J", "V". run() can only compare these.
+    chunk_size         Number of tetrahedra (loading) or query points
+                       (nearest_neighbor, knn) processed at a time. Lower it
+                       if memory runs out; the results do not change.
 
     The extracted tetrahedral data of every mesh is kept in memory. The raw
     SimNIBS mesh is not; for methods that need it (METHODS_NEEDING_MESH) it is
@@ -687,6 +768,7 @@ class MeshConvergenceComparison:
         match_tissue_tags=True,
         include_reference_self_comparison=False,
         verbose=True,
+        chunk_size=CHUNK_SIZE,
     ):
         self.mesh_folder = Path(mesh_folder)
         self.simulation_folders = list(simulation_folders)
@@ -705,12 +787,14 @@ class MeshConvergenceComparison:
             include_reference_self_comparison
         )
         self.verbose = bool(verbose)
+        self.chunk_size = int(chunk_size)
 
         self.mapper = MeshComparisonMapper(
             k=self.k_neighbors,
             distance_power=self.distance_power,
             match_tissue_tags=self.match_tissue_tags,
             verbose=self.verbose,
+            chunk_size=self.chunk_size,
         )
 
         self.meshes = []
@@ -791,6 +875,7 @@ class MeshConvergenceComparison:
                 compare_only_list=self.compare_only_list,
                 used_tags=self.used_tags,
                 fields=self.fields,
+                chunk_size=self.chunk_size,
             )
             self.meshes.append(mesh_data)
             self._log(f"  Tetrahedra kept: {mesh_data.tetrahedron_count}")
