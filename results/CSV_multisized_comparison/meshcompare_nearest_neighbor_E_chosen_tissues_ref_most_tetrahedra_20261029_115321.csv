@@ -1,0 +1,5 @@
+method,field,tetrahedra_kept,relative_error_percent,coverage_percent,coverage_volume_percent,test_file,reference_file,reference_mode,compare_only_list,match_tissue_tags,k_neighbors,distance_power
+nearest_neighbor,E,3042650,14.817149637822705,100.0,100.0,ernie_uni_3_TDCS_1_scalar.msh,ernie_uni_075_TDCS_1_scalar.msh,most_tetrahedra,True,True,,
+nearest_neighbor,E,3395591,14.625719827462072,100.0,100.0,ernie_uni_2_TDCS_1_scalar.msh,ernie_uni_075_TDCS_1_scalar.msh,most_tetrahedra,True,True,,
+nearest_neighbor,E,8243722,12.23723232216808,100.0,100.0,ernie_uni_1_TDCS_1_scalar.msh,ernie_uni_075_TDCS_1_scalar.msh,most_tetrahedra,True,True,,
+nearest_neighbor,E,11376431,11.921460130706905,100.0,100.0,ernie_uni_085_TDCS_1_scalar.msh,ernie_uni_075_TDCS_1_scalar.msh,most_tetrahedra,True,True,,
